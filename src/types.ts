@@ -1,3 +1,5 @@
+import { isNumber, isString, optional, validateObject } from "@fi-sci/misc"
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type LoadGitHubFolderRequest = {
   repo: string
@@ -65,4 +67,37 @@ export type CommitGitHubChangesRequest = {
   repo: string;
   branch: string;
   changes: FileChange[];
+}
+
+export type Fiddle = {
+  jpfiddle: {
+    title: string
+    userId?: string
+    previousFiddleUri?: string
+    timestamp?: number
+  }
+  refs: {
+    [key: string]: string | [string, number, number]
+  }
+}
+
+export const isFiddle = (x: any): x is Fiddle => {
+  return validateObject(x, {
+    jpfiddle: {
+      title: isString,
+      userId: optional(isString),
+      previousFiddleUri: optional(isString),
+      timestamp: optional(isNumber)
+    },
+    refs: (x: any) => {
+      if (typeof x !== "object") return false;
+      for (const key in x) {
+        const value = x[key];
+        if (typeof value === "string") continue;
+        if (Array.isArray(value) && value.length === 3 && typeof value[0] === "string" && typeof value[1] === "number" && typeof value[2] === "number") continue;
+        return false;
+      }
+      return true;
+    }
+  })
 }

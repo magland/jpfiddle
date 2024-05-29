@@ -1,446 +1,466 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { FunctionComponent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import LoginButton from "./LoginButton";
-import { CommitGitHubChangesRequest, FileChange, GitHubFile, GitHubFolder, LoadGitHubFileRequest, LoadGitHubFolderRequest } from "./types";
-import localforage from "localforage";
-import { Hyperlink } from "@fi-sci/misc";
+import { useWindowDimensions } from "@fi-sci/misc";
+import { FunctionComponent, useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import LeftPanel, { JSONStringifyDeterministic } from "./LeftPanel";
+import TopBar from "./TopBar";
+import { Fiddle } from './types';
+import useRoute from "./useRoute";
+import ReferenceFileSystemClient from "./ReferenceFileSystemClient";
 // import { getGitHubAccessToken } from "./App";
 
 type Props = {
-  folderUrl?: string
+  // none
 };
 
-type JPFiddleFile = {
-  path: string;
-  content: string;
+// export type FiddleAction = {
+//   type: 'set-fiddle'
+//   fiddle: Fiddle
+// } | {
+//   type: 'file-changed'
+//   path: string
+//   content: string
+// } | {
+//   type: 'file-renamed'
+//   oldPath: string
+//   newPath: string
+// } | {
+//   type: 'file-deleted'
+//   path: string
+// } | {
+//   type: 'file-created'
+//   path: string
+// } | {
+//   type: 'set-title'
+//   title: string
+// } | {
+//   type: 'set-files',
+//   files: {path: string, content: string}[]
+// }
+
+// const fiddleReducer = (state: Fiddle | undefined, action: FiddleAction): Fiddle | undefined => {
+//   if (action.type === 'set-fiddle') {
+//     return action.fiddle
+//   }
+//   else if (action.type === 'file-changed') {
+//     if (!state) return state
+//     return {
+//       ...state,
+//       refs: {
+//         ...state.refs,
+//         [action.path]: action.content
+//       }
+//     }
+//   }
+//   else if (action.type === 'file-renamed') {
+//     if (!state) return state
+//     if (state.refs[action.newPath]) throw Error(`File already exists: ${action.newPath}`)
+//     const newRefs = { ...state.refs }
+//     delete newRefs[action.oldPath]
+//     newRefs[action.newPath] = state.refs[action.oldPath]
+//     return {
+//       ...state,
+//       refs: newRefs
+//     }
+//   }
+//   else if (action.type === 'file-deleted') {
+//     if (!state) return state
+//     const newRefs = { ...state.refs }
+//     delete newRefs[action.path]
+//     return {
+//       ...state,
+//       refs: newRefs
+//     }
+//   }
+//   else if (action.type === 'file-created') {
+//     if (!state) return state
+//     if (state.refs[action.path]) throw Error(`File already exists: ${action.path}`)
+//     return {
+//       ...state,
+//       refs: {
+//         ...state.refs,
+//         [action.path]: ''
+//       }
+//     }
+//   }
+//   else if (action.type === 'set-title') {
+//     if (!state) return state
+//     return {
+//       ...state,
+//       jpfiddle: {
+//         ...state.jpfiddle,
+//         title: action.title
+//       }
+//     }
+//   }
+//   else if (action.type === 'set-files') {
+//     if (!state) return state
+//     const newRefs: { [key: string]: string } = {}
+//     for (const file of action.files) {
+//       newRefs[file.path] = file.content
+//     }
+//     return {
+//       ...state,
+//       refs: newRefs
+//     }
+//   }
+//   else {
+//     return state
+//   }
+// }
+
+type LocalEditedFiles = {[key: string]: string} | undefined | null
+
+type LocalEditedFilesAction = {
+  type: 'set-files'
+  files: {path: string, content: string}[] | null
+} | {
+  type: 'file-changed'
+  path: string
+  content: string
+} | {
+  type: 'file-deleted'
+  path: string
+} | {
+  type: 'file-created'
+  path: string
+} | {
+  type: 'file-renamed'
+  oldPath: string
+  newPath: string
 }
 
-type EditedFiles = JPFiddleFile[] | undefined
-
-type EditedFilesAction = {
-  type: 'set-files';
-  files: EditedFiles;
-} | {
-  type: 'file-changed';
-  path: string;
-  content: string;
-} | {
-  type: 'file-renamed';
-  oldPath: string;
-  newPath: string;
-} | {
-  type: 'file-deleted';
-  path: string;
-} | {
-  type: 'file-created';
-  path: string;
-}
-
-const editedFilesReducer = (state: EditedFiles, action: EditedFilesAction): EditedFiles => {
-  switch (action.type) {
-    case 'set-files':
-      return action.files
-    case 'file-changed':
-      if ((state || []).find(f => f.path === action.path)) {
-        return (state || []).map(f => {
-          if (f.path === action.path) {
-            return {
-              ...f,
-              content: action.content
-            }
-          }
-          return f
-        })
-      }
-      else {
-        return (state || []).concat({
-          path: action.path,
-          content: action.content
-        })
-      }
-    case 'file-renamed':
-      return (state || []).map(f => {
-        if (f.path === action.oldPath) {
-          return {
-            ...f,
-            path: action.newPath
-          }
-        }
-        return f
-      })
-    case 'file-deleted':
-      return (state || []).filter(f => f.path !== action.path)
-    case 'file-created':
-      if ((state || []).find(f => f.path === action.path)) {
-        return state
-      }
-      return (state || []).concat({
-        path: action.path,
-        content: ''
-      })
+const localEditedFilesReducer = (state: LocalEditedFiles, action: LocalEditedFilesAction) => {
+  if (action.type === 'set-files') {
+    if (action.files === null) return null
+    const r: {[key: string]: string} = {}
+    for (const f of action.files) {
+      r[f.path] = f.content
+    }
+    return r
   }
+  else if (action.type === 'file-changed') {
+    return {
+      ...state,
+      [action.path]: action.content
+    }
+  }
+  else if (action.type === 'file-deleted') {
+    const newState = {...state}
+    delete newState[action.path]
+    return newState
+  }
+  else if (action.type === 'file-created') {
+    return {
+      ...state,
+      [action.path]: ''
+    }
+  }
+  else if (action.type === 'file-renamed') {
+    const newState = {...state}
+    newState[action.newPath] = (state || {})[action.oldPath]
+    delete newState[action.oldPath]
+    return newState
+  }
+  return state
 }
 
-const HomePage: FunctionComponent<Props> = ({folderUrl}) => {
-  const [savedFiles, setSavedFiles] = useState<JPFiddleFile[] | undefined>(undefined)
-  const [editedFiles, editedFilesDispatch] = useReducer(editedFilesReducer, undefined)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
+const HomePage: FunctionComponent<Props> = () => {
+  const { route } = useRoute()
+  if (route.page !== 'home') {
+    throw Error('Unexpected')
+  }
+  const { fiddleUri } = route
+  const [cloudFiddle, setCloudFiddle] = useState<Fiddle | undefined>(undefined)
+  const [localEditedFiles, localEditedFilesDispatch] = useReducer(localEditedFilesReducer, undefined)
+  const [iframeElmt, setIframeElmt] = useState<HTMLIFrameElement | null>(null)
+  const [jpfiddleExtensionReady, setJpfiddleExtensionReady] = useState(false)
+  const { width, height } = useWindowDimensions()
+  const fiddleId = useMemo(() => {
+    if (!fiddleUri) return 'unsaved'
+    return (fiddleUri.split('/').slice(-1)[0] || '').split('.')[0] || 'unknown'
+  }, [fiddleUri])
   useEffect(() => {
+    if (!iframeElmt) return
+    if (!fiddleId) return
+    let canceled = false
     const onMessage = (e: MessageEvent) => {
+      if (canceled) {
+        console.warn('Ignoring message because canceled', e.data)
+        return
+      }
       const msg = e.data
       console.info('Received message', msg)
-      if (msg.type === 'file-saved') {
-        // for notebooks, content is an object
+      if (msg.type === 'jpfiddle-extension-ready') {
+        console.info('jpfiddle extension ready *****')
+        setJpfiddleExtensionReady(true)
+        iframeElmt.contentWindow?.postMessage({
+          type: 'set-fiddle-id',
+          fiddleId
+        }, '*')
+        iframeElmt.contentWindow?.postMessage({
+          type: 'get-files'
+        }, '*')
+      }
+      else if (msg.type === 'file-saved') {
         const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content, null, 2)
-        editedFilesDispatch({type: 'file-changed', path: msg.path, content})
+        localEditedFilesDispatch({type: 'file-changed', path: msg.path, content})
       }
       else if (msg.type === 'file-renamed') {
-        editedFilesDispatch({type: 'file-renamed', oldPath: msg.oldPath, newPath: msg.newPath})
+        localEditedFilesDispatch({ type: 'file-renamed', oldPath: msg.oldPath, newPath: msg.newPath })
       }
       else if (msg.type === 'file-deleted') {
-        editedFilesDispatch({type: 'file-deleted', path: msg.path})
+        localEditedFilesDispatch({ type: 'file-deleted', path: msg.path })
       }
       else if (msg.type === 'file-created') {
-        editedFilesDispatch({type: 'file-created', path: msg.path})
+        localEditedFilesDispatch({ type: 'file-created', path: msg.path })
+      }
+      else if (msg.type === 'files') {
+        console.info('Received files', msg.files)
+        if (msg.files === null) {
+          localEditedFilesDispatch({ type: 'set-files', files: null })
+          return
+        }
+        const files: {path: string, content: string}[] = []
+        for (const f of msg.files) {
+          const textContent = typeof f.content === 'string' ? f.content : JSONStringifyDeterministic(f.content)
+          files.push({path: f.path, content: textContent})
+        }
+        localEditedFilesDispatch({ type: 'set-files', files })
       }
     }
     window.addEventListener('message', onMessage)
-    ;(async () => {
-      const editedFiles0: JPFiddleFile[] = []
-      const {repo, folderPath, branch} = parseGitHubFolderUrl(folderUrl)
-      let canceled = false
-      const ff = await loadGitHubFolder({repo, folderPath, branch})
-      if (canceled) {
-        return
-      }
-      for (const f of ff) {
-        if (f.type === 'file') {
-          const file = await loadGitHubFile({repo, filePath: f.path, branch})
-          if (canceled) {
-            return
-          }
-          const content = atob(file.content)
-          editedFiles0.push({
-            path: f.path.slice(folderPath.length + 1),
-            content
-          })
+    return () => {
+      canceled = true
+      window.removeEventListener('message', onMessage)
+    }
+  }, [iframeElmt, fiddleId])
+  useEffect(() => {
+    let canceled = false
+    setCloudFiddle(undefined)
+    if (!fiddleUri) {
+      setCloudFiddle({
+        jpfiddle: {
+          title: 'Untitled'
+        },
+        refs: {}
+      })
+      return
+    }
+    (async () => {
+      const response = await fetch(fiddleUri)
+      if (!response.ok) throw Error(`Unable to load fiddle from cloud: ${fiddleUri}`)
+      const fiddle: Fiddle = await response.json()
+      if (canceled) return
+      setCloudFiddle(fiddle)
+    })()
+    return () => {
+      canceled = true
+    }
+  }, [fiddleUri])
+  useEffect(() => {
+    let canceled = false
+    if (localEditedFiles === undefined) return
+    if (!cloudFiddle) return
+    if (!iframeElmt) return
+    if (!jpfiddleExtensionReady) return
+    ; (async () => {
+      if (localEditedFiles === null) {
+        const cloudFiddleClient = new ReferenceFileSystemClient({
+          version: 0,
+          refs: cloudFiddle.refs
+        })
+        const filesToSet = []
+        for (const fname in cloudFiddle.refs) {
+          const buf = await cloudFiddleClient.readBinary(fname, {})
+          if (canceled) return
+          const content = new TextDecoder().decode(buf)
+          filesToSet.push({path: fname, content})
         }
-      }
-      editedFilesDispatch({type: 'set-files', files: editedFiles0})
-      setSavedFiles(deepCopy(editedFiles0))
-      iframeRef.current?.contentWindow?.postMessage({
-        type: 'set-files',
-        files: editedFiles0
-      }, '*')
-      return () => {
-        canceled = true
-        window.removeEventListener('message', onMessage)
+        iframeElmt.contentWindow?.postMessage({
+          type: 'set-files',
+          files: filesToSet
+        }, '*')
       }
     })()
-  }, [folderUrl])
+    return () => { canceled = true }
+  }, [cloudFiddle, localEditedFiles, iframeElmt, jpfiddleExtensionReady])
+  // useEffect(() => {
+  //   let canceled = false
+  //   if (!cloudFiddle) return
+  //     ; (async () => {
+  //       const x = await getLocalEditedFiddleForUri(fiddleUri)
+  //       if (canceled) return
+  //       if (!x) {
+  //         localEditedFiddleDispatch({ type: 'set-fiddle', fiddle: cloudFiddle })
+  //       }
+  //       else {
+  //         localEditedFiddleDispatch({ type: 'set-fiddle', fiddle: x })
+  //       }
+  //     })()
+  //   return () => {
+  //     canceled = true
+  //   }
+  // }, [cloudFiddle, fiddleUri])
+  // useEffect(() => {
+  //   if (!localEditedFiddle) return
+  //     ; (async () => {
+  //       await setLocalEditedFiddleForUri(fiddleUri, localEditedFiddle)
+  //     })()
+  // }, [localEditedFiddle, fiddleUri])
+  // const [fiddleFilesOnIframeHaveBeenSet, setFiddleFilesOnIframeHaveBeenSet] = useState(false)
+  // const [loadFilesStatus, setLoadFilesStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
+  // useEffect(() => {
+  //   if (!iframeElmt) return
+  //   if (!jpfiddleExtensionReady) return
+  //   if (!localEditedFiles) return
+  //   if (fiddleFilesOnIframeHaveBeenSet) return
+  //   setLoadFilesStatus('loading')
+  //   let canceled = false
+  //     ; (async () => {
+  //       const files: { path: string, content: string }[] = []
+  //       for (const fname in localEditedFiles) {
+  //         const text = localEditedFiles[fname]
+  //         if (canceled) return
+  //         if (text) {
+  //           files.push({
+  //             path: fname,
+  //             content: text
+  //           })
+  //         }
+  //       }
+  //       if (!iframeElmt.contentWindow) throw Error('Unexpected: iframeElmt.contentWindow is null')
+  //       iframeElmt.contentWindow.postMessage({
+  //         type: 'set-files',
+  //         files
+  //       }, '*')
+  //       setFiddleFilesOnIframeHaveBeenSet(true)
+  //       setLoadFilesStatus('loaded')
+  //       return () => {
+  //         canceled = true
+  //       }
+  //     })()
+  // }, [iframeElmt, jpfiddleExtensionReady, localEditedFiles, fiddleFilesOnIframeHaveBeenSet])
 
-  const addedFilePaths = useMemo(() => {
-    const added: string[] = []
-    for (const f of editedFiles || []) {
-      if (!savedFiles?.find(f0 => f0.path === f.path)) {
-        added.push(f.path)
-      }
+  const handleToCloud = useCallback(async () => {
+    if (!localEditedFiles) return
+    const existingTitle = cloudFiddle?.jpfiddle?.title
+    const title = window.prompt('Enter a title for this fiddle', formSuggestedNewTitle(existingTitle || ''))
+    if (!title) return
+    const newFiddle: Fiddle = {
+      jpfiddle: {
+        ...cloudFiddle?.jpfiddle,
+        title,
+        previousFiddleUri: fiddleUri,
+        timestamp: Date.now() / 1000
+      },
+      refs: localEditedFiles
     }
-    return added
-  }, [editedFiles, savedFiles])
-
-  const removedFilePaths = useMemo(() => {
-    const removed: string[] = []
-    for (const f of savedFiles || []) {
-      if (!editedFiles?.find(f0 => f0.path === f.path)) {
-        removed.push(f.path)
-      }
-    }
-    return removed
-  }, [editedFiles, savedFiles])
-
-  const modifiedFilePaths = useMemo(() => {
-    const modified: string[] = []
-    for (const f of editedFiles || []) {
-      if (savedFiles?.find(f0 => f0.path === f.path && f0.content !== f.content)) {
-        modified.push(f.path)
-      }
-    }
-    return modified
-  }, [editedFiles, savedFiles])
-
-  const hasChanges = useMemo(() => {
-    return addedFilePaths.length > 0 || removedFilePaths.length > 0 || modifiedFilePaths.length > 0
-  }, [addedFilePaths, removedFilePaths, modifiedFilePaths])
-
-  const handleCommitChanges = useCallback(async () => {
-    const {repo, folderPath, branch} = parseGitHubFolderUrl(folderUrl)
-    const modifiedChanges = modifiedFilePaths.map(path => {
-      const file = editedFiles?.find(f => f.path === path)
-      if (!file) {
-        throw new Error(`File not found: ${path}`)
-      }
-      return {
-        type: 'modified',
-        path: folderPath + '/' + path,
-        content: file.content
-      } as FileChange
-    });
-    const addedChanges = addedFilePaths.map(path => {
-      const file = editedFiles?.find(f => f.path === path)
-      if (!file) {
-        throw new Error(`File not found: ${path}`)
-      }
-      return {
-        type: 'added',
-        path: folderPath + '/' + path,
-        content: file.content
-      } as FileChange
-    });
-    const removedChanges = removedFilePaths.map(path => {
-      return {
-        type: 'removed',
-        path: folderPath + '/' + path
-      } as FileChange
-    });
-    const url = `/api/commitGitHubChanges`
-    const githubAccessTokenJson = localStorage.getItem('github_access_token')
-    if (!githubAccessTokenJson) {
-      throw new Error('No github access token')
-    }
-    let githubAccessToken
-    try {
-      githubAccessToken = JSON.parse(githubAccessTokenJson).accessToken
-      if (!githubAccessToken) {
-        throw new Error('No github access token')
-      }
-    }
-    catch (e) {
-      throw new Error(`Invalid github access token json: ${githubAccessTokenJson}`)
-    }
-    const changes: FileChange[] = modifiedChanges.concat(addedChanges).concat(removedChanges)
-    const req: CommitGitHubChangesRequest = {
-      repo,
-      branch,
-      changes
-    }
-    const response = await fetch(url, {
+    const url = `/api/saveFiddle`
+    const rr = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `token ${githubAccessToken}`
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(req)
+      body: JSON.stringify({fiddle: newFiddle})
     })
-    if (!response.ok) {
-      throw new Error(`Failed to commit changes: ${response.statusText}`)
+    if (!rr.ok) {
+      alert(`Problem saving to cloud: ${await rr.text()}`)
+      return
     }
-    const data = await response.json()
-    if (!data.success) {
-      throw new Error(`Failed to commit changes`)
+    const resp = await rr.json()
+    if (!resp.success) {
+      alert(`Problem saving to cloud: ${resp.error}`)
+      return
     }
-    console.info('Changes committed successfully')
-  }, [addedFilePaths, editedFiles, modifiedFilePaths, removedFilePaths, folderUrl])
+    // localforage.removeItem(`local-fiddle|${fiddleUri}`)
+    const newFiddleUri = resp.fiddleUri
+    window.location.href = `/?f=${newFiddleUri}`
+  }, [localEditedFiles, cloudFiddle, fiddleUri])
+
+  const handleResetToCloudVersion = useCallback(async () => {
+    if (!cloudFiddle) return
+    if (!iframeElmt) throw Error('Unexpected: iframeElmt is null')
+    const okay = window.confirm('Are you sure you want to discard local changes and reset to the cloud version?')
+    if (!okay) return
+    const cloudFiddleClient = new ReferenceFileSystemClient({
+      version: 0,
+      refs: cloudFiddle.refs
+    })
+    const newFiles = []
+    for (const fname in cloudFiddle.refs) {
+      const buf = await cloudFiddleClient.readBinary(fname, {})
+      const content = new TextDecoder().decode(buf)
+      newFiles.push({path: fname, content})
+    }
+    for (const fname in localEditedFiles || {}) {
+      if (!cloudFiddle.refs[fname]) {
+        newFiles.push({path: fname, content: null})
+      }
+    }
+    iframeElmt.contentWindow?.postMessage({
+      type: 'set-files',
+      files: newFiles
+    }, '*')
+  }, [cloudFiddle, localEditedFiles, iframeElmt])
+
+  const topBarHeight = 40
+  const leftPanelWidth = Math.max(250, Math.min(340, width * 0.2))
 
   return (
-    <div>
-      <div>
-        <h3>Log in using GitHub in order to use jpfiddle</h3>
-        <LoginButton />
+    <div style={{ position: 'absolute', width, height, overflow: 'hidden' }}>
+      <div className="jpfiddle-top-bar" style={{ position: 'absolute', left: 0, top: 0, width, height: topBarHeight, overflow: 'hidden' }}>
+        <TopBar
+          width={width}
+          height={topBarHeight}
+          cloudFiddle={cloudFiddle}
+          fiddleUri={fiddleUri}
+        />
       </div>
-      <div>
-        {modifiedFilePaths.length > 0 && (
-          <span>{modifiedFilePaths.length} modified&nbsp;&nbsp;&nbsp;</span>
-        )}
-        {addedFilePaths.length > 0 && (
-          <span>{addedFilePaths.length} added&nbsp;&nbsp;&nbsp;</span>
-        )}
-        {removedFilePaths.length > 0 && (
-          <span>{removedFilePaths.length} removed&nbsp;&nbsp;&nbsp;</span>
-        )}
-        {
-          hasChanges && (
-            <Hyperlink onClick={handleCommitChanges}>
-              Commit changes
-            </Hyperlink>
-          )
-        }
+      <div className="jpfiddle-left-panel" style={{ position: 'absolute', left: 0, top: topBarHeight, width: leftPanelWidth, height: height - topBarHeight, overflow: 'auto' }}>
+        <LeftPanel
+          width={leftPanelWidth}
+          height={height - topBarHeight}
+          fiddleUri={fiddleUri || ''}
+          localEditedFiles={localEditedFiles || undefined}
+          cloudFiddle={cloudFiddle}
+          onSaveChangesToCloud={handleToCloud}
+          onResetToCloudVersion={handleResetToCloudVersion}
+          loadFilesStatus={'loaded'}
+        />
       </div>
-      <div>
+      <div className="jupyter-window" style={{ position: 'absolute', left: leftPanelWidth, top: topBarHeight, width: width - leftPanelWidth, height: height - topBarHeight, overflow: 'hidden' }}>
         <iframe
-          ref={iframeRef}
-          style={{width: 800, height: 800}}
-          src="http://localhost:5000"
+          ref={elmt => setIframeElmt(elmt)}
+          style={{ width: '100%', height: '100%' }}
+          // src="https://magland.github.io/jpfiddle-jupyterlite/lab/index.html"
+          // reset is used so we don't reopen tabs - which is important when switching between fiddles
+          src="http://localhost:8888/lab?reset"
         />
       </div>
     </div>
   )
 };
 
-const parseGitHubFolderUrl = (url: string | undefined) => {
-  // for example https://github.com/scratchrealm/jpfiddle_examples/tree/main/test1
-  if (!url) {
-    return {repo: '', folderPath: '', branch: ''}
-  }
-  const parts = url.split('/')
-  if (parts.length < 6) {
-    return {repo: '', folderPath: '', branch: ''}
-  }
-  const repo = parts[3] + '/' + parts[4]
-  const branch = parts[6]
-  const folderPath = parts.slice(7).join('/')
-  return {repo, folderPath, branch}
-}
+// const getLocalEditedFiddleForUri = async (fiddleUri: string | undefined): Promise<Fiddle | undefined> => {
+//   const x = await localforage.getItem(`local-fiddle|${fiddleUri}`)
+//   if (!x) return undefined
+//   return x as Fiddle
+// }
 
-const folderMemoryCache = new Map<string, {
-  folder: GitHubFolder;
-  expires: number;
-}>();
+// const setLocalEditedFiddleForUri = async (fiddleUri: string | undefined, fiddle: Fiddle) => {
+//   await localforage.setItem(`local-fiddle|${fiddleUri}`, fiddle)
+// }
 
-const folderBrowserCache = localforage.createInstance({
-  name: 'github-folder-cache'
-})
-
-const loadGitHubFolder = async ({repo, folderPath, branch}: {repo: string, folderPath: string, branch: string}): Promise<GitHubFolder> => {
-  const k = `folder|${repo}|${branch}|${folderPath}`
-  if (folderMemoryCache.has(k)) {
-    const cached = folderMemoryCache.get(k)
-    if (cached && cached.expires > Date.now()) {
-      return cached.folder
-    }
-  }
-  try {
-    const cached: any = await folderBrowserCache.getItem(k)
-    if (cached && (cached.expires > Date.now())) {
-      return cached.folder
-    }
-  }
-  catch (e) {
-    console.error('Failed to get folder from localforage', e)
-  }
-  const req: LoadGitHubFolderRequest = {
-    repo,
-    folderPath,
-    branch
-  }
-  const url = `/api/loadGitHubFolder`
-  const githubAccessTokenJson = localStorage.getItem('github_access_token')
-  if (!githubAccessTokenJson) {
-    throw new Error('No github access token')
-  }
-  let githubAccessToken
-  try {
-    githubAccessToken = JSON.parse(githubAccessTokenJson).accessToken
-    if (!githubAccessToken) {
-      throw new Error('No github access token')
-    }
-  }
-  catch (e) {
-    throw new Error(`Invalid github access token json: ${githubAccessTokenJson}`)
-  }
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `token ${githubAccessToken}`
-    },
-    body: JSON.stringify(req)
-  })
-  if (!response.ok) {
-    throw new Error(`Failed to load github folder: ${response.statusText}`)
-  }
-  const data = await response.json()
-  const {folder: ff, rateLimitRemaining} = data
-  if (rateLimitRemaining !== undefined) {
-    console.info(`Rate limit remaining: ${rateLimitRemaining}`)
-  }
-  folderMemoryCache.set(k, {
-    folder: ff,
-    expires: Date.now() + 1000 * 60 * 60 // 1 hour for memory cache (user should reload the page)
-  })
-  await folderBrowserCache.setItem(k, {
-    folder: ff,
-    expires: Date.now() + 1 * 1000 * 60 // 1 minute - this is useful for rapid page reloads, esp during development
-  })
-  return ff as GitHubFolder
-}
-
-const fileMemoryCache = new Map<string, {
-  file: GitHubFile;
-  expires: number;
-}>();
-
-// fileBrowserCache uses localforage
-const fileBrowserCache = localforage.createInstance({
-  name: 'github-file-cache'
-})
-
-const loadGitHubFile = async ({repo, filePath, branch}: {repo: string, filePath: string, branch: string}) => {
-  const k = `file|${repo}|${branch}|${filePath}`
-  if (fileMemoryCache.has(k)) {
-    const cached = fileMemoryCache.get(k)
-    if (cached && cached.expires > Date.now()) {
-      return cached.file
-    }
-  }
-  try {
-    const cached: any = await fileBrowserCache.getItem(k)
-    if (cached && (cached.expires > Date.now())) {
-      return cached.file
-    }
-  }
-  catch (e) {
-    console.error('Failed to get file from localforage', e)
-  }
-  const req: LoadGitHubFileRequest = {
-    repo,
-    filePath,
-    branch
-  }
-  const url = `/api/loadGitHubFile`
-  const githubAccessTokenJson = localStorage.getItem('github_access_token')
-  if (!githubAccessTokenJson) {
-    throw new Error('No github access token')
-  }
-  let githubAccessToken
-  try {
-    githubAccessToken = JSON.parse(githubAccessTokenJson).accessToken
-    if (!githubAccessToken) {
-      throw new Error('No github access token')
-    }
-  }
-  catch (e) {
-    throw new Error(`Invalid github access token json: ${githubAccessTokenJson}`)
-  }
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `token ${githubAccessToken}`
-    },
-    body: JSON.stringify(req)
-  })
-  if (!response.ok) {
-    throw new Error(`Failed to load github file: ${response.statusText}`)
-  }
-  const data = await response.json()
-  const {file: ff, rateLimitRemaining} = data
-  if (rateLimitRemaining !== undefined) {
-    console.info(`Rate limit remaining: ${rateLimitRemaining}`)
-  }
-  fileMemoryCache.set(k, {
-    file: ff,
-    expires: Date.now() + 1000 * 60 * 60 // 1 hour for memory cache (user should reload the page)
-  })
-  await fileBrowserCache.setItem(k, {
-    file: ff,
-    expires: Date.now() + 1 * 1000 * 60 // 1 minute - this is useful for rapid page reloads, esp during development
-  })
-  return ff as GitHubFile
-}
-
-const deepCopy = (obj: any) => {
-  return JSON.parse(JSON.stringify(obj))
+const formSuggestedNewTitle = (existingTitle: string): string => {
+  if (!existingTitle) return ''
+  // if it's old-title, we want to make it old-title v2
+  // if it's old-title v2, we want to make it old-title v3
+  // etc
+  const match = existingTitle.match(/(.*) v(\d+)$/)
+  if (!match) return `${existingTitle} v2`
+  const base = match[1]
+  const num = parseInt(match[2])
+  return `${base} v${num + 1}`
 }
 
 export default HomePage;

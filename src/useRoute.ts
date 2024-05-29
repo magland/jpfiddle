@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 
 export type Route = {
     page: 'home'
-    folderUrl?: string
+    fiddleUri?: string
 } | {
     page: 'loggedIn'
     accessToken: string
@@ -24,7 +24,7 @@ const useRoute = () => {
         if (p === '/') {
             return {
                 page: 'home',
-                folderUrl: searchParams.get('folder') || undefined
+                fiddleUri: searchParams.get('f') || undefined
             }
         }
         else if (p === '/loggedIn') {
@@ -70,7 +70,7 @@ const useRoute = () => {
             navigate(`/jpfiddle-login?access_token=${r.access_token}`)
         }
         else if (r.page === 'home') {
-            navigate('/?folder=' + (r.folderUrl || ''))
+            navigate('/?f=' + (r.fiddleUri || ''))
         }
         else {
             navigate('/')

@@ -1,4 +1,3 @@
-import './App.css'
 import { BrowserRouter } from 'react-router-dom'
 import HomePage from './HomePage'
 import LogInPage from './LogInPage'
@@ -17,7 +16,7 @@ function App() {
 function MainWindow() {
   const { route } = useRoute()
   if (route.page === 'home') {
-    return <HomePage folderUrl={route.folderUrl} />
+    return <HomePage />
   }
   else if (route.page === 'logIn') {
     return <LogInPage />

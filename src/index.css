@@ -24,10 +24,6 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
 }
 
 h1 {
@@ -65,4 +61,26 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+.jpfiddle-top-bar {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #f0f0f0 1px,
+    #e0e0e0 6px
+  );
+  padding-top: 2px;
+  padding-left: 10px;
+  font-size: 28px;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+.jpfiddle-left-panel {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #f0f0f0 1px,
+    #e0e0e0 6px
+  );
+  padding: 6px;
+  font-size: 12px;
 }
