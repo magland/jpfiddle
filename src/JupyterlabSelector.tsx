@@ -6,6 +6,8 @@ type JupyterlabSelectorProps = {
     // none
 }
 
+const isChrome = navigator.userAgent.indexOf('Chrome') > -1
+
 const JupyterlabSelector: FunctionComponent<JupyterlabSelectorProps> = () => {
     const [selection, setSelection] = useState<JupyterLabSelection>(initialJupyterlabSelection)
     const [changed, setChanged] = useState(false)
@@ -13,7 +15,7 @@ const JupyterlabSelector: FunctionComponent<JupyterlabSelectorProps> = () => {
         localStorage.setItem('jupyterlabSelection', JSON.stringify(selection))
     }, [selection])
     return (
-        <div>
+        <div style={{padding: 3}}>
             <span style={{fontWeight: 'bold'}}>Select a JupyterLab</span>
             <div>
                 <input type="radio" id="jupyterlite" name="jupyterlab" value="jupyterlite" checked={selection.type === 'jupyterlite'} onChange={() => {
@@ -41,10 +43,17 @@ const JupyterlabSelector: FunctionComponent<JupyterlabSelectorProps> = () => {
                             setChanged(true)
                         }
                     }
-                }>Edit URL</Hyperlink>
+                }>Edit URL</Hyperlink>&nbsp;|&nbsp;
+                <Hyperlink
+                    href="https://github.com/magland/jpfiddle/blob/main/doc/local_jupyterlab.md"
+                    target="_blank"
+                >Instructions</Hyperlink>
             </div>}
             {changed && <div style={{color: 'red'}}>
                 Reload the page to apply the changes
+            </div>}
+            {isChrome && selection.type === 'local' && <div style={{color: 'red'}}>
+                Authentication to a local JupyterLab may not work in Chrome. Try Firefox or Safari.
             </div>}
         </div>
     )
