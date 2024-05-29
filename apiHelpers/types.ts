@@ -73,6 +73,7 @@ export type Fiddle = {
   jpfiddle: {
     title: string
     userId?: string
+    userName?: string
     previousFiddleUri?: string
     timestamp?: number
   }
@@ -86,6 +87,7 @@ export const isFiddle = (x: any): x is Fiddle => {
     jpfiddle: {
       title: isString,
       userId: optional(isString),
+      userName: optional(isString),
       previousFiddleUri: optional(isString),
       timestamp: optional(isNumber)
     },

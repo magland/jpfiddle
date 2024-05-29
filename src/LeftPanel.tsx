@@ -2,11 +2,13 @@
 import { Hyperlink } from "@fi-sci/misc";
 import { FunctionComponent, useCallback, useEffect, useMemo, useState } from "react";
 import { Fiddle } from './types';
+import JupyterlabSelector from "./JupyterlabSelector";
 
 type LeftPanelProps = {
     width: number
     height: number
     fiddleUri: string
+    fiddleId: string
     cloudFiddle: Fiddle | undefined
     localEditedFiles?: {[key: string]: string}
     onSaveChangesToCloud: () => void
@@ -14,7 +16,7 @@ type LeftPanelProps = {
     loadFilesStatus: 'loading' | 'loaded' | 'error'
 }
 
-const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onResetToCloudVersion, loadFilesStatus }) => {
+const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onResetToCloudVersion, loadFilesStatus }) => {
     const addedFilePaths: string[] = useMemo(() => {
         if (!localEditedFiles) return []
         if (!cloudFiddle) return []
@@ -58,10 +60,6 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, cloudF
         return addedFilePaths.length > 0 || removedFilePaths.length > 0 || modifiedFilePaths.length > 0
     }, [addedFilePaths, removedFilePaths, modifiedFilePaths])
 
-    const metaSection = (
-        <div style={{ position: 'relative', left: 2, width: width - 4 }}>
-        </div>
-    )
     let loadingStatusSection: any | undefined = undefined
     if ((fiddleUri && (!cloudFiddle)) || (loadFilesStatus !== 'loaded')) {
         loadingStatusSection = (
@@ -157,6 +155,18 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, cloudF
         )
     )
 
+    const jupyterlabSelectorSection = (
+        <JupyterlabSelector />
+    )
+
+    const metaSection = (
+        <div style={{ position: 'relative', left: 2, width: width - 4 }}>
+            Fiddle: {cloudFiddle?.jpfiddle.title || ''} ({fiddleId})
+            <br />
+            Owner: {cloudFiddle?.jpfiddle.userName || ''}
+        </div>
+    )
+
     const temporyWarningSection = (
         fiddleUri.startsWith('https://tempory.net') && (
             <div style={{ color: 'darkorange' }}>
@@ -172,8 +182,6 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, cloudF
 
     return (
         <div>
-            {metaSection}
-            <hr />
             {loadingStatusSection}
             {loadingStatusSection && <hr />}
 
@@ -185,6 +193,12 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, cloudF
 
             {previousVersionSection}
             {previousVersionSection && <hr />}
+
+            {jupyterlabSelectorSection}
+            {jupyterlabSelectorSection && <hr />}
+
+            {metaSection}
+            {metaSection && <hr />}
 
             {temporyWarningSection}
             {temporyWarningSection && <hr />}

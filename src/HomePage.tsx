@@ -6,6 +6,7 @@ import TopBar from "./TopBar";
 import { Fiddle } from './types';
 import useRoute from "./useRoute";
 import ReferenceFileSystemClient from "./ReferenceFileSystemClient";
+import { initialJupyterlabSelection } from "./jupyterlabSelection";
 // import { getGitHubAccessToken } from "./App";
 
 type Props = {
@@ -346,10 +347,13 @@ const HomePage: FunctionComponent<Props> = () => {
     const existingTitle = cloudFiddle?.jpfiddle?.title
     const title = window.prompt('Enter a title for this fiddle', formSuggestedNewTitle(existingTitle || ''))
     if (!title) return
+    const userName = getUserName()
+    if (!userName) return
     const newFiddle: Fiddle = {
       jpfiddle: {
         ...cloudFiddle?.jpfiddle,
         title,
+        userName,
         previousFiddleUri: fiddleUri,
         timestamp: Date.now() / 1000
       },
@@ -406,6 +410,22 @@ const HomePage: FunctionComponent<Props> = () => {
   const topBarHeight = 40
   const leftPanelWidth = Math.max(250, Math.min(340, width * 0.2))
 
+  const jupyterlabSrc = useMemo(() => {
+    // ?reset is used so we don't reopen tabs - which is important when switching between fiddles
+    let u: string
+    if (initialJupyterlabSelection.type === 'jupyterlite') {
+      u = 'https://magland.github.io/jpfiddle-jupyterlite/lab'
+    }
+    else if (initialJupyterlabSelection.type === 'local') {
+      u = initialJupyterlabSelection.url
+    }
+    else {
+      // default to jupyterlite
+      u = 'https://magland.github.io/jpfiddle-jupyterlite/lab'
+    }
+    return u + (u.includes('?') ? '&' : '?') + 'reset'
+  }, [])
+
   return (
     <div style={{ position: 'absolute', width, height, overflow: 'hidden' }}>
       <div className="jpfiddle-top-bar" style={{ position: 'absolute', left: 0, top: 0, width, height: topBarHeight, overflow: 'hidden' }}>
@@ -421,6 +441,7 @@ const HomePage: FunctionComponent<Props> = () => {
           width={leftPanelWidth}
           height={height - topBarHeight}
           fiddleUri={fiddleUri || ''}
+          fiddleId={fiddleId}
           localEditedFiles={localEditedFiles || undefined}
           cloudFiddle={cloudFiddle}
           onSaveChangesToCloud={handleToCloud}
@@ -432,9 +453,7 @@ const HomePage: FunctionComponent<Props> = () => {
         <iframe
           ref={elmt => setIframeElmt(elmt)}
           style={{ width: '100%', height: '100%' }}
-          // src="https://magland.github.io/jpfiddle-jupyterlite/lab/index.html"
-          // reset is used so we don't reopen tabs - which is important when switching between fiddles
-          src="http://localhost:8888/lab?reset"
+          src={jupyterlabSrc}
         />
       </div>
     </div>
@@ -461,6 +480,15 @@ const formSuggestedNewTitle = (existingTitle: string): string => {
   const base = match[1]
   const num = parseInt(match[2])
   return `${base} v${num + 1}`
+}
+
+const getUserName = (): string | null => {
+  const userNameFromLocalStorage = localStorage.getItem('jpfiddle-user-name')
+  const msg = 'Enter your full name. This is needed so we can delete large suspicious fiddles.'
+  const name = window.prompt(msg, userNameFromLocalStorage || '')
+  if (!name) return null
+  localStorage.setItem('jpfiddle-user-name', name)
+  return name
 }
 
 export default HomePage;
