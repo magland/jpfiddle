@@ -264,17 +264,13 @@ const HomePage: FunctionComponent<Props> = () => {
     }
   }, [fiddleUri])
   useEffect(() => {
-    console.log('----------------------------------------- 1')
     let canceled = false
     if (localEditedFiles === undefined) return
-    console.log('----------------------------------------- 2')
     if (!cloudFiddle) return
     if (!iframeElmt) return
     if (!jpfiddleExtensionReady) return
-    console.log('----------------------------------------- 3')
     ; (async () => {
       if (localEditedFiles === null) {
-        console.log('----------------------------------------- 4')
         const cloudFiddleClient = new ReferenceFileSystemClient({
           version: 0,
           refs: cloudFiddle.refs
@@ -286,7 +282,6 @@ const HomePage: FunctionComponent<Props> = () => {
           const content = new TextDecoder().decode(buf)
           filesToSet.push({path: fname, content})
         }
-        console.log('----------------------------------------- 5', filesToSet, cloudFiddle)
         iframeElmt.contentWindow?.postMessage({
           type: 'set-files',
           files: filesToSet
