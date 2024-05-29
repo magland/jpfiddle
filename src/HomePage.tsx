@@ -174,7 +174,12 @@ const HomePage: FunctionComponent<Props> = () => {
   const [cloudFiddle, setCloudFiddle] = useState<Fiddle | undefined>(undefined)
   const [localEditedFiles, localEditedFilesDispatch] = useReducer(localEditedFilesReducer, undefined)
   const [iframeElmt, setIframeElmt] = useState<HTMLIFrameElement | null>(null)
-  const [jpfiddleExtensionReady, setJpfiddleExtensionReady] = useState(false)
+
+  // it seems we need to increment the ready code here
+  // so that we can reset the useEffect hooks when we get a new ready message
+  // in case the extension loaded and then reloaded (don't fully understand)
+  const [jpfiddleExtensionReady, setJpfiddleExtensionReady] = useState(0)
+
   const { width, height } = useWindowDimensions()
   const fiddleId = useMemo(() => {
     if (!fiddleUri) return 'unsaved'
@@ -193,7 +198,7 @@ const HomePage: FunctionComponent<Props> = () => {
       console.info('Received message', msg)
       if (msg.type === 'jpfiddle-extension-ready') {
         console.info('jpfiddle extension ready *****')
-        setJpfiddleExtensionReady(true)
+        setJpfiddleExtensionReady(c => c + 1)
         iframeElmt.contentWindow?.postMessage({
           type: 'set-fiddle-id',
           fiddleId
@@ -259,13 +264,17 @@ const HomePage: FunctionComponent<Props> = () => {
     }
   }, [fiddleUri])
   useEffect(() => {
+    console.log('----------------------------------------- 1')
     let canceled = false
     if (localEditedFiles === undefined) return
+    console.log('----------------------------------------- 2')
     if (!cloudFiddle) return
     if (!iframeElmt) return
     if (!jpfiddleExtensionReady) return
+    console.log('----------------------------------------- 3')
     ; (async () => {
       if (localEditedFiles === null) {
+        console.log('----------------------------------------- 4')
         const cloudFiddleClient = new ReferenceFileSystemClient({
           version: 0,
           refs: cloudFiddle.refs
@@ -277,6 +286,7 @@ const HomePage: FunctionComponent<Props> = () => {
           const content = new TextDecoder().decode(buf)
           filesToSet.push({path: fname, content})
         }
+        console.log('----------------------------------------- 5', filesToSet, cloudFiddle)
         iframeElmt.contentWindow?.postMessage({
           type: 'set-files',
           files: filesToSet
