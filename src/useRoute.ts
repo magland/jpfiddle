@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 export type Route = {
     page: 'home'
     fiddleUri?: string
+    title?: string
 } | {
     page: 'loggedIn'
     accessToken: string
@@ -24,7 +25,8 @@ const useRoute = () => {
         if (p === '/') {
             return {
                 page: 'home',
-                fiddleUri: searchParams.get('f') || undefined
+                fiddleUri: searchParams.get('f') || undefined,
+                title: searchParams.get('t') || undefined
             }
         }
         else if (p === '/loggedIn') {
@@ -59,21 +61,25 @@ const useRoute = () => {
         }
     }, [p, searchParams])
 
-    const setRoute = useCallback((r: Route) => {
+    const setRoute = useCallback((r: Route, o: {replace?: boolean} = {replace: false}) => {
         if (r.page === 'loggedIn') {
-            navigate(`/loggedIn?access_token=${r.accessToken}`)
+            navigate(`/loggedIn?access_token=${r.accessToken}`, {replace: !!o.replace})
         }
         else if (r.page === 'logIn') {
-            navigate('/logIn')
+            navigate('/logIn', {replace: !!o.replace})
         }
         else if (r.page === 'jpfiddle-login') {
-            navigate(`/jpfiddle-login?access_token=${r.access_token}`)
+            navigate(`/jpfiddle-login?access_token=${r.access_token}`, {replace: !!o.replace})
         }
         else if (r.page === 'home') {
-            navigate('/?f=' + (r.fiddleUri || ''))
+            let p = `/?f=${r.fiddleUri || ''}`
+            if (r.title) {
+                p += `&t=${encodeURIComponent(r.title)}`
+            }
+            navigate(p, {replace: !!o.replace})
         }
         else {
-            navigate('/')
+            navigate('/', {replace: !!o.replace})
         }
     }, [navigate])
 

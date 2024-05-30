@@ -165,14 +165,47 @@ const localEditedFilesReducer = (state: LocalEditedFiles, action: LocalEditedFil
   return state
 }
 
+const getLocalEditedFilesFromBrowserStorage = (fiddleUri: string | undefined): LocalEditedFiles | undefined => {
+  const x = localStorage.getItem(`local-edited-files|${fiddleUri || '_'}`)
+  if (!x) return undefined
+  try {
+    return JSON.parse(x)
+  }
+  catch (err) {
+    console.warn('Problem parsing local-edited-files from browser storage', err)
+    return undefined
+  }
+}
+
+const setLocalEditedFilesInBrowserStorage = (fiddleUri: string | undefined, files: LocalEditedFiles) => {
+  localStorage.setItem(`local-edited-files|${fiddleUri || '_'}`, JSON.stringify(files))
+}
+
+const clearLocalEditedFilesFromBrowserStorage = (fiddleUri: string | undefined) => {
+  localStorage.removeItem(`local-edited-files|${fiddleUri || '_'}`)
+}
+
 const HomePage: FunctionComponent<Props> = () => {
-  const { route } = useRoute()
+  const { route, setRoute } = useRoute()
   if (route.page !== 'home') {
     throw Error('Unexpected')
   }
   const { fiddleUri } = route
   const [cloudFiddle, setCloudFiddle] = useState<Fiddle | undefined>(undefined)
   const [localEditedFiles, localEditedFilesDispatch] = useReducer(localEditedFilesReducer, undefined)
+  useEffect(() => {
+    // prior to leaving page
+    if (initialJupyterlabSelection.type !== 'jupyterlite') return
+    if (!localEditedFiles) return
+    const onUnload = () => {
+      if (!localEditedFiles) return
+      setLocalEditedFilesInBrowserStorage(fiddleUri, localEditedFiles)
+    }
+    window.addEventListener('beforeunload', onUnload)
+    return () => {
+      window.removeEventListener('beforeunload', onUnload)
+    }
+  }, [fiddleUri, localEditedFiles])
   const [iframeElmt, setIframeElmt] = useState<HTMLIFrameElement | null>(null)
 
   // it seems we need to increment the ready code here
@@ -273,6 +306,20 @@ const HomePage: FunctionComponent<Props> = () => {
     if (!jpfiddleExtensionReady) return
     ; (async () => {
       if (localEditedFiles === null) {
+        if (initialJupyterlabSelection.type === 'jupyterlite') {
+          const x = getLocalEditedFilesFromBrowserStorage(fiddleUri)
+          if (x) {
+            const files: {path: string, content: string}[] = []
+            for (const fname in x) {
+              files.push({path: fname, content: x[fname]})
+            }
+            iframeElmt.contentWindow?.postMessage({
+              type: 'set-files',
+              files
+            }, '*')
+            return
+          }
+        }
         const cloudFiddleClient = new ReferenceFileSystemClient({
           version: 0,
           refs: cloudFiddle.refs
@@ -291,7 +338,26 @@ const HomePage: FunctionComponent<Props> = () => {
       }
     })()
     return () => { canceled = true }
-  }, [cloudFiddle, localEditedFiles, iframeElmt, jpfiddleExtensionReady])
+  }, [cloudFiddle, localEditedFiles, iframeElmt, jpfiddleExtensionReady, fiddleUri])
+  useEffect(() => {
+    // update the title in the route
+    if (!cloudFiddle) return
+    if (!cloudFiddle.jpfiddle) return
+    if (!cloudFiddle.jpfiddle.title) return
+    if (cloudFiddle.jpfiddle.title === route.title) return
+    const newRoute = { ...route, title: cloudFiddle.jpfiddle.title }
+    setRoute(newRoute, { replace: true })
+  }, [cloudFiddle, route, setRoute])
+
+  useEffect(() => {
+    // update the document title based on the route
+    if (!route.title) {
+      document.title = 'jpfiddle'
+    }
+    else {
+      document.title = route.title
+    }
+  }, [route.title])
   // useEffect(() => {
   //   let canceled = false
   //   if (!cloudFiddle) return
@@ -412,7 +478,8 @@ const HomePage: FunctionComponent<Props> = () => {
       type: 'set-files',
       files: newFiles
     }, '*')
-  }, [cloudFiddle, localEditedFiles, iframeElmt])
+    clearLocalEditedFilesFromBrowserStorage(fiddleUri)
+  }, [cloudFiddle, localEditedFiles, iframeElmt, fiddleUri])
 
   const topBarHeight = 40
   const leftPanelWidth = Math.max(250, Math.min(340, width * 0.2))
@@ -482,6 +549,7 @@ const formSuggestedNewTitle = (existingTitle: string): string => {
   // if it's old-title, we want to make it old-title v2
   // if it's old-title v2, we want to make it old-title v3
   // etc
+  if (existingTitle === 'Untitled') return existingTitle
   const match = existingTitle.match(/(.*) v(\d+)$/)
   if (!match) return `${existingTitle} v2`
   const base = match[1]

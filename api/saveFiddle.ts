@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import allowCors from "../apiHelpers/allowCors.js";
-import { isFiddle } from "../apiHelpers/types.js";
+import allowCors from "../apiHelpers/allowCors";
+import { isFiddle } from "../apiHelpers/types";
 
 const TEMPORY_ACCESS_TOKEN = process.env.TEMPORY_ACCESS_TOKEN;
 if (!TEMPORY_ACCESS_TOKEN) {

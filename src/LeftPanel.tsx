@@ -2,7 +2,8 @@
 import { Hyperlink } from "@fi-sci/misc";
 import { FunctionComponent, useCallback, useEffect, useMemo, useState } from "react";
 import { Fiddle } from './types';
-import JupyterlabSelector from "./JupyterlabSelector";
+import JupyterlabSelector, { jupyterSelectorInstructionsUrl } from "./JupyterlabSelector";
+import { initialJupyterlabSelection } from "./jupyterlabSelection";
 
 type LeftPanelProps = {
     width: number
@@ -16,7 +17,7 @@ type LeftPanelProps = {
     loadFilesStatus: 'loading' | 'loaded' | 'error'
 }
 
-const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onResetToCloudVersion, loadFilesStatus }) => {
+const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onResetToCloudVersion, loadFilesStatus }) => {
     const addedFilePaths: string[] = useMemo(() => {
         if (!localEditedFiles) return []
         if (!cloudFiddle) return []
@@ -118,6 +119,26 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, fiddle
         )
     )
 
+    const jupyterlabSelectorSection = (
+        <JupyterlabSelector />
+    )
+
+    const metaSection = (
+        <div style={{ position: 'relative', left: 2, width: width - 22 }}>
+            Fiddle: {cloudFiddle?.jpfiddle.title || ''} ({fiddleId})
+            <br />
+            Owner: {cloudFiddle?.jpfiddle.userName || ''}
+        </div>
+    )
+
+    const temporyWarningSection = (
+        fiddleUri.startsWith('https://tempory.net') && (
+            <div style={{ color: 'darkorange' }}>
+                Warning: Files stored on tempory.net are temporary and subject to deletion.
+            </div>
+        )
+    )
+
     const { recentFiddles, addRecentFiddle } = useRecentFiddles()
     const cloudFiddleTitle = useMemo(() => cloudFiddle?.jpfiddle.title, [cloudFiddle])
     useEffect(() => {
@@ -125,7 +146,6 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, fiddle
             addRecentFiddle(cloudFiddleTitle, fiddleUri)
         }
     }, [fiddleUri, cloudFiddleTitle, addRecentFiddle])
-
     const recentFiddlesSection = (
         <div style={{ position: 'relative', height: 150, overflowY: 'auto'}}>
             <span style={{ fontSize: 16, fontWeight: 'bold' }}>Recent</span>
@@ -149,30 +169,45 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, fiddle
                 <Hyperlink onClick={() => {
                     window.location.href = `/?f=${cloudFiddle.jpfiddle.previousFiddleUri}`
                 }}>
-                    Previous version
+                    Previous version of this fiddle
                 </Hyperlink>
             </div>
         )
     )
 
-    const jupyterlabSelectorSection = (
-        <JupyterlabSelector />
-    )
-
-    const metaSection = (
-        <div style={{ position: 'relative', left: 2, width: width - 4 }}>
-            Fiddle: {cloudFiddle?.jpfiddle.title || ''} ({fiddleId})
-            <br />
-            Owner: {cloudFiddle?.jpfiddle.userName || ''}
-        </div>
-    )
-
-    const temporyWarningSection = (
-        fiddleUri.startsWith('https://tempory.net') && (
-            <div style={{ color: 'darkorange' }}>
-                Warning: Files stored on tempory.net are temporary and subject to deletion.
+    const notesSection = (
+        <div>
+            {initialJupyterlabSelection.type === 'jupyterlite' && (
+                <div>
+                    <p>
+                        You are using <b>JupyterLite</b> which is a lightweight version of JupyterLab
+                        that runs entirely in the browser. It is not as featureful as JupyterLab
+                        and can be slow, but it is convenient for browsing a fiddle without
+                        needing to host a Jupyter server. If you plan to do more than just
+                        browsing, you should consider using the "Local JupyterLab" option.
+                        &nbsp;<a href={jupyterSelectorInstructionsUrl} target="_blank" rel="noreferrer">
+                            Read more
+                        </a>.
+                    </p>
+                </div>
+            )}
+            {initialJupyterlabSelection.type === 'local' && (
+                <div>
+                    <p>
+                        You are using a <b>local JupyterLab</b>. This is a full-featured version of JupyterLab
+                        that runs on your local machine. Draft fiddles are saved on your local machine.
+                        &nbsp;<a href={jupyterSelectorInstructionsUrl} target="_blank" rel="noreferrer">
+                            Read more
+                        </a>.
+                    </p>
+                </div>
+            )}
+            <div>
+                <p>
+                    Only text files are saved in the fiddle (e.g., files with extension .ipynb, .py, .md, .txt, etc.).
+                </p>
             </div>
-        )
+        </div>
     )
 
     {/* <div>
@@ -181,12 +216,21 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, fiddle
       </div> */}
 
     return (
-        <div>
+        <div style={{ width, height, overflowY: 'auto' }}>
             {loadingStatusSection}
-            {loadingStatusSection && <hr />}
+            {<hr />}
+
+            {metaSection}
+            {metaSection && <hr />}
 
             {localChangesSection}
             {localChangesSection && <hr />}
+
+            {jupyterlabSelectorSection}
+            {jupyterlabSelectorSection && <hr />}
+
+            {temporyWarningSection}
+            {temporyWarningSection && <hr />}
 
             {recentFiddlesSection}
             {recentFiddlesSection && <hr />}
@@ -194,14 +238,8 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, fiddleUri, fiddle
             {previousVersionSection}
             {previousVersionSection && <hr />}
 
-            {jupyterlabSelectorSection}
-            {jupyterlabSelectorSection && <hr />}
-
-            {metaSection}
-            {metaSection && <hr />}
-
-            {temporyWarningSection}
-            {temporyWarningSection && <hr />}
+            {notesSection}
+            {notesSection && <hr />}
 
         </div>
     )

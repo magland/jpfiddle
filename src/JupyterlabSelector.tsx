@@ -8,6 +8,8 @@ type JupyterlabSelectorProps = {
 
 const isChrome = navigator.userAgent.indexOf('Chrome') > -1
 
+export const jupyterSelectorInstructionsUrl = "https://github.com/magland/jpfiddle/blob/main/doc/local_jupyterlab.md"
+
 const JupyterlabSelector: FunctionComponent<JupyterlabSelectorProps> = () => {
     const [selection, setSelection] = useState<JupyterLabSelection>(initialJupyterlabSelection)
     const [changed, setChanged] = useState(false)
@@ -45,7 +47,7 @@ const JupyterlabSelector: FunctionComponent<JupyterlabSelectorProps> = () => {
                     }
                 }>Edit URL</Hyperlink>&nbsp;|&nbsp;
                 <Hyperlink
-                    href="https://github.com/magland/jpfiddle/blob/main/doc/local_jupyterlab.md"
+                    href={jupyterSelectorInstructionsUrl}
                     target="_blank"
                 >Instructions</Hyperlink>
             </div>}
