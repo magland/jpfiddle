@@ -111,11 +111,11 @@ type Props = {
 //   }
 // }
 
-type LocalEditedFiles = {[key: string]: string} | undefined | null
+type LocalEditedFiles = { [key: string]: string } | undefined | null
 
 type LocalEditedFilesAction = {
   type: 'set-files'
-  files: {path: string, content: string}[] | null
+  files: { path: string, content: string }[] | null
 } | {
   type: 'file-changed'
   path: string
@@ -135,7 +135,7 @@ type LocalEditedFilesAction = {
 const localEditedFilesReducer = (state: LocalEditedFiles, action: LocalEditedFilesAction) => {
   if (action.type === 'set-files') {
     if (action.files === null) return null
-    const r: {[key: string]: string} = {}
+    const r: { [key: string]: string } = {}
     for (const f of action.files) {
       r[f.path] = f.content
     }
@@ -148,7 +148,7 @@ const localEditedFilesReducer = (state: LocalEditedFiles, action: LocalEditedFil
     }
   }
   else if (action.type === 'file-deleted') {
-    const newState = {...state}
+    const newState = { ...state }
     delete newState[action.path]
     return newState
   }
@@ -159,7 +159,7 @@ const localEditedFilesReducer = (state: LocalEditedFiles, action: LocalEditedFil
     }
   }
   else if (action.type === 'file-renamed') {
-    const newState = {...state}
+    const newState = { ...state }
     newState[action.newPath] = (state || {})[action.oldPath]
     delete newState[action.oldPath]
     return newState
@@ -246,7 +246,7 @@ const HomePage: FunctionComponent<Props> = () => {
       }
       else if (msg.type === 'file-saved') {
         const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content, null, 2)
-        localEditedFilesDispatch({type: 'file-changed', path: msg.path, content})
+        localEditedFilesDispatch({ type: 'file-changed', path: msg.path, content })
       }
       else if (msg.type === 'file-renamed') {
         localEditedFilesDispatch({ type: 'file-renamed', oldPath: msg.oldPath, newPath: msg.newPath })
@@ -263,10 +263,10 @@ const HomePage: FunctionComponent<Props> = () => {
           localEditedFilesDispatch({ type: 'set-files', files: null })
           return
         }
-        const files: {path: string, content: string}[] = []
+        const files: { path: string, content: string }[] = []
         for (const f of msg.files) {
           const textContent = typeof f.content === 'string' ? f.content : JSONStringifyDeterministic(f.content)
-          files.push({path: f.path, content: textContent})
+          files.push({ path: f.path, content: textContent })
         }
         localEditedFilesDispatch({ type: 'set-files', files })
       }
@@ -313,39 +313,39 @@ const HomePage: FunctionComponent<Props> = () => {
     if (!cloudFiddle) return
     if (!iframeElmt) return
     if (!jpfiddleExtensionReady) return
-    ; (async () => {
-      if (localEditedFiles === null) {
-        if (initialJupyterlabSelection.type === 'jupyterlite') {
-          const x = getLocalEditedFilesFromBrowserStorage(fiddleUri)
-          if (x) {
-            const files: {path: string, content: string}[] = []
-            for (const fname in x) {
-              files.push({path: fname, content: x[fname]})
+      ; (async () => {
+        if (localEditedFiles === null) {
+          if (initialJupyterlabSelection.type === 'jupyterlite') {
+            const x = getLocalEditedFilesFromBrowserStorage(fiddleUri)
+            if (x) {
+              const files: { path: string, content: string }[] = []
+              for (const fname in x) {
+                files.push({ path: fname, content: x[fname] })
+              }
+              iframeElmt.contentWindow?.postMessage({
+                type: 'set-files',
+                files
+              }, '*')
+              return
             }
-            iframeElmt.contentWindow?.postMessage({
-              type: 'set-files',
-              files
-            }, '*')
-            return
           }
+          const cloudFiddleClient = new ReferenceFileSystemClient({
+            version: 0,
+            refs: cloudFiddle.refs
+          })
+          const filesToSet = []
+          for (const fname in cloudFiddle.refs) {
+            const buf = await cloudFiddleClient.readBinary(fname, {})
+            if (canceled) return
+            const content = new TextDecoder().decode(buf)
+            filesToSet.push({ path: fname, content })
+          }
+          iframeElmt.contentWindow?.postMessage({
+            type: 'set-files',
+            files: filesToSet
+          }, '*')
         }
-        const cloudFiddleClient = new ReferenceFileSystemClient({
-          version: 0,
-          refs: cloudFiddle.refs
-        })
-        const filesToSet = []
-        for (const fname in cloudFiddle.refs) {
-          const buf = await cloudFiddleClient.readBinary(fname, {})
-          if (canceled) return
-          const content = new TextDecoder().decode(buf)
-          filesToSet.push({path: fname, content})
-        }
-        iframeElmt.contentWindow?.postMessage({
-          type: 'set-files',
-          files: filesToSet
-        }, '*')
-      }
-    })()
+      })()
     return () => { canceled = true }
   }, [cloudFiddle, localEditedFiles, iframeElmt, jpfiddleExtensionReady, fiddleUri])
   useEffect(() => {
@@ -449,7 +449,7 @@ const HomePage: FunctionComponent<Props> = () => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({fiddle: newFiddle, saveFiddlePasscode})
+      body: JSON.stringify({ fiddle: newFiddle, saveFiddlePasscode })
     })
     if (!rr.ok) {
       alert(`Problem saving to cloud: ${await rr.text()}`)
@@ -468,25 +468,25 @@ const HomePage: FunctionComponent<Props> = () => {
   const [saveAsGistMessage, setSaveAsGistMessage] = useState<string | undefined>(undefined)
   const handleSaveAsGist = useCallback(async () => {
     if (!localEditedFiles) return
-      setSaveAsGistMessage('Saving to GitHub Gist...')
-      let htmlUrl: string | undefined
-      try {
-          htmlUrl = await saveAsGitHubGist(localEditedFiles, cloudFiddle?.jpfiddle.title || '')
-          if (!htmlUrl) {
-              setSaveAsGistMessage('Problem saving to GitHub Gist')
-              return
-          }
-          alert(`Saved to GitHub Gist: ${htmlUrl}`)
-          setSaveAsGistMessage('Saved to GitHub Gist')
+    setSaveAsGistMessage('Saving to GitHub Gist...')
+    let htmlUrl: string | undefined
+    try {
+      htmlUrl = await saveAsGitHubGist(localEditedFiles, cloudFiddle?.jpfiddle.title || '')
+      if (!htmlUrl) {
+        setSaveAsGistMessage('Problem saving to GitHub Gist')
+        return
       }
-      catch (err: any) {
-          console.error(err)
-          setSaveAsGistMessage(`Problem saving to GitHub Gist: ${err.message}`)
-          return
-      }
-      const newFiddleUri = htmlUrl
-      window.location.href = `/?f=${newFiddleUri}`
-    }, [localEditedFiles, cloudFiddle])
+      alert(`Saved to GitHub Gist: ${htmlUrl}`)
+      setSaveAsGistMessage('Saved to GitHub Gist')
+    }
+    catch (err: any) {
+      console.error(err)
+      setSaveAsGistMessage(`Problem saving to GitHub Gist: ${err.message}`)
+      return
+    }
+    const newFiddleUri = htmlUrl
+    window.location.href = `/?f=${newFiddleUri}`
+  }, [localEditedFiles, cloudFiddle])
 
   const handleResetToCloudVersion = useCallback(async () => {
     if (!cloudFiddle) return
@@ -501,11 +501,11 @@ const HomePage: FunctionComponent<Props> = () => {
     for (const fname in cloudFiddle.refs) {
       const buf = await cloudFiddleClient.readBinary(fname, {})
       const content = new TextDecoder().decode(buf)
-      newFiles.push({path: fname, content})
+      newFiles.push({ path: fname, content })
     }
     for (const fname in localEditedFiles || {}) {
       if (!cloudFiddle.refs[fname]) {
-        newFiles.push({path: fname, content: null})
+        newFiles.push({ path: fname, content: null })
       }
     }
     iframeElmt.contentWindow?.postMessage({
