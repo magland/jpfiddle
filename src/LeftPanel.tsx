@@ -81,44 +81,50 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
         )
     }
     const localChangesSection = (
-        hasChanges && (
-            <div>
-                <h3>Local changes</h3>
-                <ul>
-                    {
-                        addedFilePaths.map((path, ii) => (
-                            <li key={ii}>
-                                {path} - added
-                            </li>
-                        ))
-                    }
-                    {
-                        removedFilePaths.map((path, ii) => (
-                            <li key={ii}>
-                                {path} - removed
-                            </li>
-                        ))
-                    }
-                    {
-                        modifiedFilePaths.map((path, ii) => (
-                            <li key={ii}>
-                                {path} - modified
-                            </li>
-                        ))
-                    }
-                </ul>
+        <div>
+            {hasChanges && (
+                <div>
+                    <h3>Local changes</h3>
+                    <ul>
+                        {
+                            addedFilePaths.map((path, ii) => (
+                                <li key={ii}>
+                                    {path} - added
+                                </li>
+                            ))
+                        }
+                        {
+                            removedFilePaths.map((path, ii) => (
+                                <li key={ii}>
+                                    {path} - removed
+                                </li>
+                            ))
+                        }
+                        {
+                            modifiedFilePaths.map((path, ii) => (
+                                <li key={ii}>
+                                    {path} - modified
+                                </li>
+                            ))
+                        }
+                    </ul>
+                </div>
+            )}
+            {hasChanges || !fiddleUri.startsWith('https://tempory.net') && (
                 <div>
                     <Hyperlink onClick={onSaveChangesToCloud}>
                         Save to cloud
                     </Hyperlink>
                 </div>
+            )}
+            {hasChanges && (
                 <div>
                     <Hyperlink onClick={onResetToCloudVersion}>
                         Reset to cloud version
                     </Hyperlink>
                 </div>
-            </div>
-        )
+            )}
+        </div>
     )
 
     const jupyterlabSelectorSection = (
