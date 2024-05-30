@@ -432,13 +432,15 @@ const HomePage: FunctionComponent<Props> = () => {
       },
       refs: localEditedFiles
     }
+    const saveFiddlePasscode = getSaveFiddlePasscode()
+    if (!saveFiddlePasscode) return
     const url = `/api/saveFiddle`
     const rr = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({fiddle: newFiddle})
+      body: JSON.stringify({fiddle: newFiddle, saveFiddlePasscode})
     })
     if (!rr.ok) {
       alert(`Problem saving to cloud: ${await rr.text()}`)
@@ -564,6 +566,23 @@ const getUserName = (): string | null => {
   if (!name) return null
   localStorage.setItem('jpfiddle-user-name', name)
   return name
+}
+
+const getSaveFiddlePasscode = (): string | null => {
+  const passcodeFromLocalStorage = localStorage.getItem('jpfiddle-save-fiddle-passcode')
+  const msg = 'Enter the passcode for saving fiddles. You can obtain this from the jpfiddle administrator.'
+  let defaultString = ''
+  if (passcodeFromLocalStorage) {
+    // replace with stars
+    defaultString = passcodeFromLocalStorage.replace(/./g, '*')
+  }
+  let passcode = window.prompt(msg, defaultString)
+  if (passcode === defaultString) {
+    passcode = passcodeFromLocalStorage
+  }
+  if (!passcode) return null
+  localStorage.setItem('jpfiddle-save-fiddle-passcode', passcode)
+  return passcode
 }
 
 export default HomePage;

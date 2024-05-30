@@ -133,7 +133,7 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
 
     const temporyWarningSection = (
         fiddleUri.startsWith('https://tempory.net') && (
-            <div style={{ color: 'darkorange' }}>
+            <div style={{ color: '#a31' }}>
                 Warning: Files stored on tempory.net are temporary and subject to deletion.
             </div>
         )
@@ -210,6 +210,25 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
         </div>
     )
 
+    const advancedSection = (
+        <div>
+            <details open>
+                <summary style={{ fontWeight: 'bold', cursor: 'pointer' }}>
+                    Advanced
+                </summary>
+                <div>
+                    <Hyperlink
+                        onClick={() => {
+                            alert('Saving to GitHub gist is not yet implemented')
+                        }}
+                    >
+                        Save to GitHub gist (coming soon)
+                    </Hyperlink>
+                </div>
+            </details>
+        </div>
+    )
+
     {/* <div>
         <h3>Log in using GitHub in order to use jpfiddle</h3>
         <LoginButton />
@@ -229,9 +248,6 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
             {jupyterlabSelectorSection}
             {jupyterlabSelectorSection && <hr />}
 
-            {temporyWarningSection}
-            {temporyWarningSection && <hr />}
-
             {recentFiddlesSection}
             {recentFiddlesSection && <hr />}
 
@@ -240,6 +256,11 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
 
             {notesSection}
             {notesSection && <hr />}
+
+            {temporyWarningSection}
+            {temporyWarningSection && <hr />}
+
+            {advancedSection}
 
         </div>
     )

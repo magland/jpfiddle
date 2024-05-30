@@ -1,11 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import allowCors from "../apiHelpers/allowCors";
-import { isFiddle } from "../apiHelpers/types";
+import allowCors from "../apiHelpers/allowCors.js";
+import { isFiddle } from "../apiHelpers/types.js";
 
 const TEMPORY_ACCESS_TOKEN = process.env.TEMPORY_ACCESS_TOKEN;
 if (!TEMPORY_ACCESS_TOKEN) {
     throw new Error("TEMPORY_ACCESS_TOKEN is not set");
+}
+
+const SAVE_FIDDLE_PASSCODE = process.env.SAVE_FIDDLE_PASSCODE;
+if (!SAVE_FIDDLE_PASSCODE) {
+    throw new Error("SAVE_FIDDLE_PASSCODE is not set");
 }
 
 export default allowCors(async (req: VercelRequest, res: VercelResponse) => {
@@ -14,6 +19,11 @@ export default allowCors(async (req: VercelRequest, res: VercelResponse) => {
         return;
     }
     const rr = req.body;
+    const saveFiddlePasscode = rr.saveFiddlePasscode;
+    if (saveFiddlePasscode !== SAVE_FIDDLE_PASSCODE) {
+        res.status(400).json({ error: "Invalid passcode" });
+        return;
+    }
     const fiddle = rr.fiddle;
     if (!fiddle) {
         res.status(400).json({ error: "Invalid request" });
