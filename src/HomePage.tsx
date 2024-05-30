@@ -7,7 +7,7 @@ import { Fiddle } from './types';
 import useRoute from "./useRoute";
 import ReferenceFileSystemClient from "./ReferenceFileSystemClient";
 import { initialJupyterlabSelection } from "./jupyterlabSelection";
-import saveAsGitHubGist from "./saveAsGitHubGist";
+import saveAsGitHubGist, { updateGitHubGist } from "./saveAsGitHubGist";
 import loadFiddleFromGitHubGist from "./loadFiddleFromGitHubGist";
 // import { getGitHubAccessToken } from "./App";
 
@@ -265,7 +265,7 @@ const HomePage: FunctionComponent<Props> = () => {
         }
         const files: { path: string, content: string }[] = []
         for (const f of msg.files) {
-          const textContent = typeof f.content === 'string' ? f.content : JSONStringifyDeterministic(f.content)
+          const textContent = typeof f.content === 'string' ? f.content : JSONStringifyDeterministic(f.content, 2)
           files.push({ path: f.path, content: textContent })
         }
         localEditedFilesDispatch({ type: 'set-files', files })
@@ -488,6 +488,48 @@ const HomePage: FunctionComponent<Props> = () => {
     window.location.href = `/?f=${newFiddleUri}`
   }, [localEditedFiles, cloudFiddle])
 
+  const handleUpdateGist = useCallback(async () => {
+    if (!fiddleUri?.startsWith('https://gist.github.com/')) return
+    if (!cloudFiddle) return
+    if (!localEditedFiles) return
+    const cloudFiddleClient = new ReferenceFileSystemClient({
+      version: 0,
+      refs: cloudFiddle.refs
+    })
+    setSaveAsGistMessage('Updating Gist')
+    const patch: {[key: string]: string | null} = {}
+    for (const fname in localEditedFiles || {}) {
+      let cloudFileContent: string | null = null
+      if (cloudFiddle.refs[fname]) {
+        const buf = await cloudFiddleClient.readBinary(fname, {})
+        cloudFileContent = new TextDecoder().decode(buf)
+      }
+      const localFileContent = localEditedFiles[fname]
+      if (cloudFileContent !== localFileContent) {
+        patch[fname] = localFileContent
+      }
+    }
+    for (const fname in cloudFiddle.refs) {
+      if (localEditedFiles[fname] === undefined) {
+        patch[fname] = null
+      }
+    }
+    const numChanges = Object.keys(patch).length
+    if (numChanges === 0) {
+      setSaveAsGistMessage('No changes to update')
+      return
+    }
+    setSaveAsGistMessage(`Updating Gist with ${numChanges} changes`)
+    try {
+      await updateGitHubGist(fiddleUri, patch)
+    }
+    catch(err: any) {
+      setSaveAsGistMessage(`Problem updating Gist: ${err.message}`)
+      return
+    }
+    setSaveAsGistMessage(`Updated Gist with ${numChanges} changes`)
+  }, [fiddleUri, cloudFiddle, localEditedFiles])
+
   const handleResetToCloudVersion = useCallback(async () => {
     if (!cloudFiddle) return
     if (!iframeElmt) throw Error('Unexpected: iframeElmt is null')
@@ -554,6 +596,7 @@ const HomePage: FunctionComponent<Props> = () => {
           cloudFiddle={cloudFiddle}
           onSaveChangesToCloud={handleSaveChangesToCloud}
           onSaveAsGist={handleSaveAsGist}
+          onUpdateGist={handleUpdateGist}
           saveAsGistMessage={saveAsGistMessage}
           onResetToCloudVersion={handleResetToCloudVersion}
           loadFilesStatus={'loaded'}

@@ -35,6 +35,42 @@ const saveAsGitHubGist = async (files: {[key: string]: string}, defaultDescripti
     return gistUrl;
 }
 
+export const updateGitHubGist = async (gistUri: string, patch: {[path: string]: string | null}) => {
+    const token = prompt("UPDATING GIST: Enter your GitHub personal access token (this will not be stored):");
+    if (!token) {
+        return;
+    }
+    const octokit = new Octokit({
+        auth: token
+    });
+    const gistId = gistUri.split('/').pop();
+    if (!gistId) {
+        throw new Error('Invalid gist URI');
+    }
+    // patch
+    const files: {[key: string]: {content?: string}} = {};
+    for (const path in patch) {
+        const path2 = replaceSlashesWithBars(path);
+        let content = patch[path];
+        if (content === null) {
+            files[path2] = {};
+        }
+        else {
+            if (content.trim() === '') {
+                content = '<<empty>>' + content; // include the whitespace so we can recover the original file
+            }
+            files[path2] = {content};
+        }
+    }
+    await octokit.request(`PATCH /gists/${gistId}`, {
+        gist_id: gistId,
+        files,
+        headers: {
+            'X-GitHub-Api-Version': '2022-11-28'
+        }
+    });
+}
+
 const replaceSlashesWithBars = (s: string) => {
     return s.split('/').join('|');
 }

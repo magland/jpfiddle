@@ -14,12 +14,13 @@ type LeftPanelProps = {
     localEditedFiles?: {[key: string]: string}
     onSaveChangesToCloud: () => void
     onSaveAsGist: () => void
+    onUpdateGist: () => void
     saveAsGistMessage?: string
     onResetToCloudVersion: () => void
     loadFilesStatus: 'loading' | 'loaded' | 'error'
 }
 
-const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onSaveAsGist, saveAsGistMessage, onResetToCloudVersion, loadFilesStatus }) => {
+const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onSaveAsGist, onUpdateGist, saveAsGistMessage, onResetToCloudVersion, loadFilesStatus }) => {
     const addedFilePaths: string[] = useMemo(() => {
         if (!localEditedFiles) return []
         if (!cloudFiddle) return []
@@ -232,9 +233,18 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                 {localEditedFiles && <div>
                     <Hyperlink
                         onClick={onSaveAsGist}>
-                        Save as GitHub Gist
+                        {fiddleUri.startsWith('https://gist.github.com') ? 'Save as new GitHub Gist' : 'Save as GitHub Gist'}
                     </Hyperlink>
                 </div>}
+                {localEditedFiles && fiddleUri.startsWith('https://gist.github.com') && (
+                    <div>
+                        <Hyperlink
+                            onClick={onUpdateGist}
+                        >
+                            Update GitHub Gist
+                        </Hyperlink>
+                    </div>
+                )}
                 {
                     saveAsGistMessage && (
                         <div>
