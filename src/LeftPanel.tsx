@@ -13,11 +13,13 @@ type LeftPanelProps = {
     cloudFiddle: Fiddle | undefined
     localEditedFiles?: {[key: string]: string}
     onSaveChangesToCloud: () => void
+    onSaveAsGist: () => void
+    saveAsGistMessage?: string
     onResetToCloudVersion: () => void
     loadFilesStatus: 'loading' | 'loaded' | 'error'
 }
 
-const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onResetToCloudVersion, loadFilesStatus }) => {
+const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onSaveAsGist, saveAsGistMessage, onResetToCloudVersion, loadFilesStatus }) => {
     const addedFilePaths: string[] = useMemo(() => {
         if (!localEditedFiles) return []
         if (!cloudFiddle) return []
@@ -221,15 +223,19 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                 <summary style={{ fontWeight: 'bold', cursor: 'pointer' }}>
                     Advanced
                 </summary>
-                <div>
+                {localEditedFiles && <div>
                     <Hyperlink
-                        onClick={() => {
-                            alert('Saving to GitHub gist is not yet implemented')
-                        }}
-                    >
-                        Save to GitHub gist (coming soon)
+                        onClick={onSaveAsGist}>
+                        Save to GitHub gist
                     </Hyperlink>
-                </div>
+                </div>}
+                {
+                    saveAsGistMessage && (
+                        <div>
+                            {saveAsGistMessage}
+                        </div>
+                    )
+                }
             </details>
         </div>
     )

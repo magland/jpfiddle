@@ -7,6 +7,8 @@ import { Fiddle } from './types';
 import useRoute from "./useRoute";
 import ReferenceFileSystemClient from "./ReferenceFileSystemClient";
 import { initialJupyterlabSelection } from "./jupyterlabSelection";
+import saveAsGitHubGist from "./saveAsGitHubGist";
+import loadFiddleFromGitHubGist from "./loadFiddleFromGitHubGist";
 // import { getGitHubAccessToken } from "./App";
 
 type Props = {
@@ -288,11 +290,18 @@ const HomePage: FunctionComponent<Props> = () => {
       return
     }
     (async () => {
-      const response = await fetch(fiddleUri)
-      if (!response.ok) throw Error(`Unable to load fiddle from cloud: ${fiddleUri}`)
-      const fiddle: Fiddle = await response.json()
-      if (canceled) return
-      setCloudFiddle(fiddle)
+      if (fiddleUri.startsWith('https://gist.github.com/')) {
+        const fiddle = await loadFiddleFromGitHubGist(fiddleUri)
+        if (canceled) return
+        setCloudFiddle(fiddle)
+      }
+      else {
+        const response = await fetch(fiddleUri)
+        if (!response.ok) throw Error(`Unable to load fiddle from cloud: ${fiddleUri}`)
+        const fiddle: Fiddle = await response.json()
+        if (canceled) return
+        setCloudFiddle(fiddle)
+      }
     })()
     return () => {
       canceled = true
@@ -415,7 +424,7 @@ const HomePage: FunctionComponent<Props> = () => {
   //     })()
   // }, [iframeElmt, jpfiddleExtensionReady, localEditedFiles, fiddleFilesOnIframeHaveBeenSet])
 
-  const handleToCloud = useCallback(async () => {
+  const handleSaveChangesToCloud = useCallback(async () => {
     if (!localEditedFiles) return
     const existingTitle = cloudFiddle?.jpfiddle?.title
     const title = window.prompt('Enter a title for this fiddle', formSuggestedNewTitle(existingTitle || ''))
@@ -455,6 +464,29 @@ const HomePage: FunctionComponent<Props> = () => {
     const newFiddleUri = resp.fiddleUri
     window.location.href = `/?f=${newFiddleUri}`
   }, [localEditedFiles, cloudFiddle, fiddleUri])
+
+  const [saveAsGistMessage, setSaveAsGistMessage] = useState<string | undefined>(undefined)
+  const handleSaveAsGist = useCallback(async () => {
+    if (!localEditedFiles) return
+      setSaveAsGistMessage('Saving to GitHub gist...')
+      let htmlUrl: string | undefined
+      try {
+          htmlUrl = await saveAsGitHubGist(localEditedFiles, cloudFiddle?.jpfiddle.title || '')
+          if (!htmlUrl) {
+              setSaveAsGistMessage('Problem saving to GitHub gist')
+              return
+          }
+          alert(`Saved to GitHub gist: ${htmlUrl}`)
+          setSaveAsGistMessage('Saved to GitHub gist')
+      }
+      catch (err: any) {
+          console.error(err)
+          setSaveAsGistMessage(`Problem saving to GitHub gist: ${err.message}`)
+          return
+      }
+      const newFiddleUri = htmlUrl
+      window.location.href = `/?f=${newFiddleUri}`
+    }, [localEditedFiles, cloudFiddle])
 
   const handleResetToCloudVersion = useCallback(async () => {
     if (!cloudFiddle) return
@@ -520,7 +552,9 @@ const HomePage: FunctionComponent<Props> = () => {
           fiddleId={fiddleId}
           localEditedFiles={localEditedFiles || undefined}
           cloudFiddle={cloudFiddle}
-          onSaveChangesToCloud={handleToCloud}
+          onSaveChangesToCloud={handleSaveChangesToCloud}
+          onSaveAsGist={handleSaveAsGist}
+          saveAsGistMessage={saveAsGistMessage}
           onResetToCloudVersion={handleResetToCloudVersion}
           loadFilesStatus={'loaded'}
         />
