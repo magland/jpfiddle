@@ -110,7 +110,7 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                     </ul>
                 </div>
             )}
-            {hasChanges || !fiddleUri.startsWith('https://tempory.net') && (
+            {(hasChanges || !fiddleUri.startsWith('https://tempory.net')) && (
                 <div>
                     <Hyperlink onClick={onSaveChangesToCloud}>
                         Save to cloud
