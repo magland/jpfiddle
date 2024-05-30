@@ -7,10 +7,11 @@ import { Fiddle, JpfiddleContext, LocalFiles, isFiddle, localFilesReducer } from
 
 type SetupJpfiddleProps = {
     fiddleUri: string
+    apiBaseUrl: string
     useLocalStorageForLocalFiles: boolean
 }
 
-const SetupJpfiddle: FunctionComponent<PropsWithChildren<SetupJpfiddleProps>> = ({ fiddleUri, useLocalStorageForLocalFiles, children }) => {
+const SetupJpfiddle: FunctionComponent<PropsWithChildren<SetupJpfiddleProps>> = ({ fiddleUri, apiBaseUrl, useLocalStorageForLocalFiles, children }) => {
     const [cloudFiddle, setCloudFiddle] = useState<Fiddle | undefined>(undefined)
     useEffect(() => {
         let canceled = false
@@ -148,7 +149,7 @@ const SetupJpfiddle: FunctionComponent<PropsWithChildren<SetupJpfiddleProps>> = 
         }
         const saveFiddlePasscode = getSaveFiddlePasscode()
         if (!saveFiddlePasscode) return
-        const url = `/api/saveFiddle`
+        const url = `${apiBaseUrl}/api/saveFiddle`
         const rr = await fetch(url, {
             method: 'POST',
             headers: {

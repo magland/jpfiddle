@@ -119,6 +119,7 @@ const HomePage: FunctionComponent<Props> = () => {
   return (
     <SetupJpfiddle
       fiddleUri={fiddleUri || ''}
+      apiBaseUrl=""
       useLocalStorageForLocalFiles={useLocalStorageForLocalFiles}
     >
       <HomePageChild />
