@@ -5,7 +5,8 @@ const allowCors = (fn: (req: VercelRequest, res: VercelResponse) => Promise<void
   const allowedOrigins = [
     "http://localhost:3000",
     "https://localhost:3001",
-    "https://jpfiddle.vercel.app"
+    "https://jpfiddle.vercel.app",
+    "https://stan-playground.vercel.app"
   ];
   const origin = req.headers.origin || "";
   if (allowedOrigins.includes(origin)) {

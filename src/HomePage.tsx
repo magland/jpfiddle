@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useWindowDimensions } from "@fi-sci/misc";
-import { FunctionComponent, useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { FunctionComponent, useCallback, useEffect, useMemo, useState } from "react";
 import LeftPanel, { JSONStringifyDeterministic } from "./LeftPanel";
 import TopBar from "./TopBar";
-import { Fiddle } from './types';
-import useRoute from "./useRoute";
-import ReferenceFileSystemClient from "./ReferenceFileSystemClient";
 import { initialJupyterlabSelection } from "./jupyterlabSelection";
-import saveAsGitHubGist, { updateGitHubGist } from "./saveAsGitHubGist";
-import loadFiddleFromGitHubGist from "./loadFiddleFromGitHubGist";
+import useRoute from "./useRoute";
+import SetupJpfiddle from "./JpfiddleContext/SetupJpfiddle";
+import { useJpfiddle } from "./JpfiddleContext/JpfiddleContext";
 // import { getGitHubAccessToken } from "./App";
 
 type Props = {
@@ -111,103 +109,26 @@ type Props = {
 //   }
 // }
 
-type LocalEditedFiles = { [key: string]: string } | undefined | null
-
-type LocalEditedFilesAction = {
-  type: 'set-files'
-  files: { path: string, content: string }[] | null
-} | {
-  type: 'file-changed'
-  path: string
-  content: string
-} | {
-  type: 'file-deleted'
-  path: string
-} | {
-  type: 'file-created'
-  path: string
-} | {
-  type: 'file-renamed'
-  oldPath: string
-  newPath: string
-}
-
-const localEditedFilesReducer = (state: LocalEditedFiles, action: LocalEditedFilesAction) => {
-  if (action.type === 'set-files') {
-    if (action.files === null) return null
-    const r: { [key: string]: string } = {}
-    for (const f of action.files) {
-      r[f.path] = f.content
-    }
-    return r
-  }
-  else if (action.type === 'file-changed') {
-    return {
-      ...state,
-      [action.path]: action.content
-    }
-  }
-  else if (action.type === 'file-deleted') {
-    const newState = { ...state }
-    delete newState[action.path]
-    return newState
-  }
-  else if (action.type === 'file-created') {
-    return {
-      ...state,
-      [action.path]: ''
-    }
-  }
-  else if (action.type === 'file-renamed') {
-    const newState = { ...state }
-    newState[action.newPath] = (state || {})[action.oldPath]
-    delete newState[action.oldPath]
-    return newState
-  }
-  return state
-}
-
-const getLocalEditedFilesFromBrowserStorage = (fiddleUri: string | undefined): LocalEditedFiles | undefined => {
-  const x = localStorage.getItem(`local-edited-files|${fiddleUri || '_'}`)
-  if (!x) return undefined
-  try {
-    return JSON.parse(x)
-  }
-  catch (err) {
-    console.warn('Problem parsing local-edited-files from browser storage', err)
-    return undefined
-  }
-}
-
-const setLocalEditedFilesInBrowserStorage = (fiddleUri: string | undefined, files: LocalEditedFiles) => {
-  localStorage.setItem(`local-edited-files|${fiddleUri || '_'}`, JSON.stringify(files))
-}
-
-const clearLocalEditedFilesFromBrowserStorage = (fiddleUri: string | undefined) => {
-  localStorage.removeItem(`local-edited-files|${fiddleUri || '_'}`)
-}
-
 const HomePage: FunctionComponent<Props> = () => {
-  const { route, setRoute } = useRoute()
+  const { route } = useRoute()
   if (route.page !== 'home') {
     throw Error('Unexpected')
   }
   const { fiddleUri } = route
-  const [cloudFiddle, setCloudFiddle] = useState<Fiddle | undefined>(undefined)
-  const [localEditedFiles, localEditedFilesDispatch] = useReducer(localEditedFilesReducer, undefined)
-  useEffect(() => {
-    // prior to leaving page
-    if (initialJupyterlabSelection.type !== 'jupyterlite') return
-    if (!localEditedFiles) return
-    const onUnload = () => {
-      if (!localEditedFiles) return
-      setLocalEditedFilesInBrowserStorage(fiddleUri, localEditedFiles)
-    }
-    window.addEventListener('beforeunload', onUnload)
-    return () => {
-      window.removeEventListener('beforeunload', onUnload)
-    }
-  }, [fiddleUri, localEditedFiles])
+  const useLocalStorageForLocalFiles = initialJupyterlabSelection.type === 'jupyterlite'
+  return (
+    <SetupJpfiddle
+      fiddleUri={fiddleUri || ''}
+      useLocalStorageForLocalFiles={useLocalStorageForLocalFiles}
+    >
+      <HomePageChild />
+    </SetupJpfiddle>
+  )
+}
+
+const HomePageChild: FunctionComponent = () => {
+  const { fiddleUri, fiddleId, cloudFiddle, initialLocalFiles, localFiles, setLocalFiles, changeLocalFile, deleteLocalFile, renameLocalFile, saveToCloud, saveAsGist, updateGist, saveAsGistMessage, resetFromCloud } = useJpfiddle()
+
   const [iframeElmt, setIframeElmt] = useState<HTMLIFrameElement | null>(null)
 
   // it seems we need to increment the ready code here
@@ -216,10 +137,6 @@ const HomePage: FunctionComponent<Props> = () => {
   const [jpfiddleExtensionReady, setJpfiddleExtensionReady] = useState(0)
 
   const { width, height } = useWindowDimensions()
-  const fiddleId = useMemo(() => {
-    if (!fiddleUri) return 'unsaved'
-    return (fiddleUri.split('/').slice(-1)[0] || '').split('.')[0] || 'unknown'
-  }, [fiddleUri])
   useEffect(() => {
     if (!iframeElmt) return
     if (!fiddleId) return
@@ -240,27 +157,29 @@ const HomePage: FunctionComponent<Props> = () => {
           // for now, we need to avoid subfolders for firefox, sadly
           fiddleId: initialJupyterlabSelection.type === 'jupyterlite' ? '' : fiddleId
         }, '*')
-        iframeElmt.contentWindow?.postMessage({
-          type: 'get-files'
-        }, '*')
+        if (initialJupyterlabSelection.type !== 'jupyterlite') {
+          iframeElmt.contentWindow?.postMessage({
+            type: 'get-files'
+          }, '*')
+        }
       }
       else if (msg.type === 'file-saved') {
         const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content, null, 2)
-        localEditedFilesDispatch({ type: 'file-changed', path: msg.path, content })
+        changeLocalFile(msg.path, content)
       }
       else if (msg.type === 'file-renamed') {
-        localEditedFilesDispatch({ type: 'file-renamed', oldPath: msg.oldPath, newPath: msg.newPath })
+        renameLocalFile(msg.oldPath, msg.newPath)
       }
       else if (msg.type === 'file-deleted') {
-        localEditedFilesDispatch({ type: 'file-deleted', path: msg.path })
+        deleteLocalFile(msg.path)
       }
       else if (msg.type === 'file-created') {
-        localEditedFilesDispatch({ type: 'file-created', path: msg.path })
+        changeLocalFile(msg.path, '')
       }
       else if (msg.type === 'files') {
         console.info('Received files', msg.files)
         if (msg.files === null) {
-          localEditedFilesDispatch({ type: 'set-files', files: null })
+          setLocalFiles(null)
           return
         }
         const files: { path: string, content: string }[] = []
@@ -268,7 +187,11 @@ const HomePage: FunctionComponent<Props> = () => {
           const textContent = typeof f.content === 'string' ? f.content : JSONStringifyDeterministic(f.content, 2)
           files.push({ path: f.path, content: textContent })
         }
-        localEditedFilesDispatch({ type: 'set-files', files })
+        const files2: { [key: string]: string } = {}
+        for (const f of files) {
+          files2[f.path] = f.content
+        }
+        setLocalFiles(files2)
       }
     }
     window.addEventListener('message', onMessage)
@@ -276,78 +199,23 @@ const HomePage: FunctionComponent<Props> = () => {
       canceled = true
       window.removeEventListener('message', onMessage)
     }
-  }, [iframeElmt, fiddleId])
+  }, [iframeElmt, fiddleId, setLocalFiles, changeLocalFile, deleteLocalFile, renameLocalFile])
+
   useEffect(() => {
-    let canceled = false
-    setCloudFiddle(undefined)
-    if (!fiddleUri) {
-      setCloudFiddle({
-        jpfiddle: {
-          title: 'Untitled'
-        },
-        refs: {}
-      })
-      return
-    }
-    (async () => {
-      if (fiddleUri.startsWith('https://gist.github.com/')) {
-        const fiddle = await loadFiddleFromGitHubGist(fiddleUri)
-        if (canceled) return
-        setCloudFiddle(fiddle)
-      }
-      else {
-        const response = await fetch(fiddleUri)
-        if (!response.ok) throw Error(`Unable to load fiddle from cloud: ${fiddleUri}`)
-        const fiddle: Fiddle = await response.json()
-        if (canceled) return
-        setCloudFiddle(fiddle)
-      }
-    })()
-    return () => {
-      canceled = true
-    }
-  }, [fiddleUri])
-  useEffect(() => {
-    let canceled = false
-    if (localEditedFiles === undefined) return
-    if (!cloudFiddle) return
     if (!iframeElmt) return
     if (!jpfiddleExtensionReady) return
-      ; (async () => {
-        if (localEditedFiles === null) {
-          if (initialJupyterlabSelection.type === 'jupyterlite') {
-            const x = getLocalEditedFilesFromBrowserStorage(fiddleUri)
-            if (x) {
-              const files: { path: string, content: string }[] = []
-              for (const fname in x) {
-                files.push({ path: fname, content: x[fname] })
-              }
-              iframeElmt.contentWindow?.postMessage({
-                type: 'set-files',
-                files
-              }, '*')
-              return
-            }
-          }
-          const cloudFiddleClient = new ReferenceFileSystemClient({
-            version: 0,
-            refs: cloudFiddle.refs
-          })
-          const filesToSet = []
-          for (const fname in cloudFiddle.refs) {
-            const buf = await cloudFiddleClient.readBinary(fname, {})
-            if (canceled) return
-            const content = new TextDecoder().decode(buf)
-            filesToSet.push({ path: fname, content })
-          }
-          iframeElmt.contentWindow?.postMessage({
-            type: 'set-files',
-            files: filesToSet
-          }, '*')
-        }
-      })()
-    return () => { canceled = true }
-  }, [cloudFiddle, localEditedFiles, iframeElmt, jpfiddleExtensionReady, fiddleUri])
+    if (!initialLocalFiles) return
+    iframeElmt.contentWindow?.postMessage({
+      type: 'set-files',
+      files: initialLocalFiles
+    }, '*')
+  }, [initialLocalFiles, iframeElmt, jpfiddleExtensionReady])
+
+  const { route, setRoute } = useRoute()
+  if (route.page !== 'home') {
+    throw Error('Unexpected')
+  }
+
   useEffect(() => {
     // update the title in the route
     if (!cloudFiddle) return
@@ -367,195 +235,16 @@ const HomePage: FunctionComponent<Props> = () => {
       document.title = route.title
     }
   }, [route.title])
-  // useEffect(() => {
-  //   let canceled = false
-  //   if (!cloudFiddle) return
-  //     ; (async () => {
-  //       const x = await getLocalEditedFiddleForUri(fiddleUri)
-  //       if (canceled) return
-  //       if (!x) {
-  //         localEditedFiddleDispatch({ type: 'set-fiddle', fiddle: cloudFiddle })
-  //       }
-  //       else {
-  //         localEditedFiddleDispatch({ type: 'set-fiddle', fiddle: x })
-  //       }
-  //     })()
-  //   return () => {
-  //     canceled = true
-  //   }
-  // }, [cloudFiddle, fiddleUri])
-  // useEffect(() => {
-  //   if (!localEditedFiddle) return
-  //     ; (async () => {
-  //       await setLocalEditedFiddleForUri(fiddleUri, localEditedFiddle)
-  //     })()
-  // }, [localEditedFiddle, fiddleUri])
-  // const [fiddleFilesOnIframeHaveBeenSet, setFiddleFilesOnIframeHaveBeenSet] = useState(false)
-  // const [loadFilesStatus, setLoadFilesStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
-  // useEffect(() => {
-  //   if (!iframeElmt) return
-  //   if (!jpfiddleExtensionReady) return
-  //   if (!localEditedFiles) return
-  //   if (fiddleFilesOnIframeHaveBeenSet) return
-  //   setLoadFilesStatus('loading')
-  //   let canceled = false
-  //     ; (async () => {
-  //       const files: { path: string, content: string }[] = []
-  //       for (const fname in localEditedFiles) {
-  //         const text = localEditedFiles[fname]
-  //         if (canceled) return
-  //         if (text) {
-  //           files.push({
-  //             path: fname,
-  //             content: text
-  //           })
-  //         }
-  //       }
-  //       if (!iframeElmt.contentWindow) throw Error('Unexpected: iframeElmt.contentWindow is null')
-  //       iframeElmt.contentWindow.postMessage({
-  //         type: 'set-files',
-  //         files
-  //       }, '*')
-  //       setFiddleFilesOnIframeHaveBeenSet(true)
-  //       setLoadFilesStatus('loaded')
-  //       return () => {
-  //         canceled = true
-  //       }
-  //     })()
-  // }, [iframeElmt, jpfiddleExtensionReady, localEditedFiles, fiddleFilesOnIframeHaveBeenSet])
-
-  const handleSaveChangesToCloud = useCallback(async () => {
-    if (!localEditedFiles) return
-    const existingTitle = cloudFiddle?.jpfiddle?.title
-    const title = window.prompt('Enter a title for this fiddle', formSuggestedNewTitle(existingTitle || ''))
-    if (!title) return
-    const userName = getUserName()
-    if (!userName) return
-    const newFiddle: Fiddle = {
-      jpfiddle: {
-        ...cloudFiddle?.jpfiddle,
-        title,
-        userName,
-        previousFiddleUri: fiddleUri,
-        timestamp: Date.now() / 1000
-      },
-      refs: localEditedFiles
-    }
-    const saveFiddlePasscode = getSaveFiddlePasscode()
-    if (!saveFiddlePasscode) return
-    const url = `/api/saveFiddle`
-    const rr = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ fiddle: newFiddle, saveFiddlePasscode })
-    })
-    if (!rr.ok) {
-      alert(`Problem saving to cloud: ${await rr.text()}`)
-      return
-    }
-    const resp = await rr.json()
-    if (!resp.success) {
-      alert(`Problem saving to cloud: ${resp.error}`)
-      return
-    }
-    // localforage.removeItem(`local-fiddle|${fiddleUri}`)
-    const newFiddleUri = resp.fiddleUri
-    window.location.href = `/?f=${newFiddleUri}`
-  }, [localEditedFiles, cloudFiddle, fiddleUri])
-
-  const [saveAsGistMessage, setSaveAsGistMessage] = useState<string | undefined>(undefined)
-  const handleSaveAsGist = useCallback(async () => {
-    if (!localEditedFiles) return
-    setSaveAsGistMessage('Saving to GitHub Gist...')
-    let htmlUrl: string | undefined
-    try {
-      htmlUrl = await saveAsGitHubGist(localEditedFiles, cloudFiddle?.jpfiddle.title || '')
-      if (!htmlUrl) {
-        setSaveAsGistMessage('Problem saving to GitHub Gist')
-        return
-      }
-      alert(`Saved to GitHub Gist: ${htmlUrl}`)
-      setSaveAsGistMessage('Saved to GitHub Gist')
-    }
-    catch (err: any) {
-      console.error(err)
-      setSaveAsGistMessage(`Problem saving to GitHub Gist: ${err.message}`)
-      return
-    }
-    const newFiddleUri = htmlUrl
-    window.location.href = `/?f=${newFiddleUri}`
-  }, [localEditedFiles, cloudFiddle])
-
-  const handleUpdateGist = useCallback(async () => {
-    if (!fiddleUri?.startsWith('https://gist.github.com/')) return
-    if (!cloudFiddle) return
-    if (!localEditedFiles) return
-    const cloudFiddleClient = new ReferenceFileSystemClient({
-      version: 0,
-      refs: cloudFiddle.refs
-    })
-    setSaveAsGistMessage('Updating Gist')
-    const patch: {[key: string]: string | null} = {}
-    for (const fname in localEditedFiles || {}) {
-      let cloudFileContent: string | null = null
-      if (cloudFiddle.refs[fname]) {
-        const buf = await cloudFiddleClient.readBinary(fname, {})
-        cloudFileContent = new TextDecoder().decode(buf)
-      }
-      const localFileContent = localEditedFiles[fname]
-      if (cloudFileContent !== localFileContent) {
-        patch[fname] = localFileContent
-      }
-    }
-    for (const fname in cloudFiddle.refs) {
-      if (localEditedFiles[fname] === undefined) {
-        patch[fname] = null
-      }
-    }
-    const numChanges = Object.keys(patch).length
-    if (numChanges === 0) {
-      setSaveAsGistMessage('No changes to update')
-      return
-    }
-    setSaveAsGistMessage(`Updating Gist with ${numChanges} changes`)
-    try {
-      await updateGitHubGist(fiddleUri, patch)
-    }
-    catch(err: any) {
-      setSaveAsGistMessage(`Problem updating Gist: ${err.message}`)
-      return
-    }
-    setSaveAsGistMessage(`Updated Gist with ${numChanges} changes`)
-  }, [fiddleUri, cloudFiddle, localEditedFiles])
 
   const handleResetToCloudVersion = useCallback(async () => {
-    if (!cloudFiddle) return
-    if (!iframeElmt) throw Error('Unexpected: iframeElmt is null')
-    const okay = window.confirm('Are you sure you want to discard local changes and reset to the cloud version?')
-    if (!okay) return
-    const cloudFiddleClient = new ReferenceFileSystemClient({
-      version: 0,
-      refs: cloudFiddle.refs
-    })
-    const newFiles = []
-    for (const fname in cloudFiddle.refs) {
-      const buf = await cloudFiddleClient.readBinary(fname, {})
-      const content = new TextDecoder().decode(buf)
-      newFiles.push({ path: fname, content })
-    }
-    for (const fname in localEditedFiles || {}) {
-      if (!cloudFiddle.refs[fname]) {
-        newFiles.push({ path: fname, content: null })
-      }
-    }
+    if (!iframeElmt) return
+    if (!jpfiddleExtensionReady) return
+    const newFiles = await resetFromCloud()
     iframeElmt.contentWindow?.postMessage({
       type: 'set-files',
       files: newFiles
     }, '*')
-    clearLocalEditedFilesFromBrowserStorage(fiddleUri)
-  }, [cloudFiddle, localEditedFiles, iframeElmt, fiddleUri])
+  }, [iframeElmt, jpfiddleExtensionReady, resetFromCloud])
 
   const topBarHeight = 40
   const leftPanelWidth = Math.max(250, Math.min(340, width * 0.2))
@@ -592,11 +281,11 @@ const HomePage: FunctionComponent<Props> = () => {
           height={height - topBarHeight}
           fiddleUri={fiddleUri || ''}
           fiddleId={fiddleId}
-          localEditedFiles={localEditedFiles || undefined}
+          localEditedFiles={localFiles || undefined}
           cloudFiddle={cloudFiddle}
-          onSaveChangesToCloud={handleSaveChangesToCloud}
-          onSaveAsGist={handleSaveAsGist}
-          onUpdateGist={handleUpdateGist}
+          onSaveChangesToCloud={saveToCloud}
+          onSaveAsGist={saveAsGist}
+          onUpdateGist={updateGist}
           saveAsGistMessage={saveAsGistMessage}
           onResetToCloudVersion={handleResetToCloudVersion}
           loadFilesStatus={'loaded'}
@@ -612,54 +301,5 @@ const HomePage: FunctionComponent<Props> = () => {
     </div>
   )
 };
-
-// const getLocalEditedFiddleForUri = async (fiddleUri: string | undefined): Promise<Fiddle | undefined> => {
-//   const x = await localforage.getItem(`local-fiddle|${fiddleUri}`)
-//   if (!x) return undefined
-//   return x as Fiddle
-// }
-
-// const setLocalEditedFiddleForUri = async (fiddleUri: string | undefined, fiddle: Fiddle) => {
-//   await localforage.setItem(`local-fiddle|${fiddleUri}`, fiddle)
-// }
-
-const formSuggestedNewTitle = (existingTitle: string): string => {
-  if (!existingTitle) return ''
-  // if it's old-title, we want to make it old-title v2
-  // if it's old-title v2, we want to make it old-title v3
-  // etc
-  if (existingTitle === 'Untitled') return existingTitle
-  const match = existingTitle.match(/(.*) v(\d+)$/)
-  if (!match) return `${existingTitle} v2`
-  const base = match[1]
-  const num = parseInt(match[2])
-  return `${base} v${num + 1}`
-}
-
-const getUserName = (): string | null => {
-  const userNameFromLocalStorage = localStorage.getItem('jpfiddle-user-name')
-  const msg = 'Enter your full name. This is needed so we can delete large suspicious fiddles.'
-  const name = window.prompt(msg, userNameFromLocalStorage || '')
-  if (!name) return null
-  localStorage.setItem('jpfiddle-user-name', name)
-  return name
-}
-
-const getSaveFiddlePasscode = (): string | null => {
-  const passcodeFromLocalStorage = localStorage.getItem('jpfiddle-save-fiddle-passcode')
-  const msg = 'Enter the passcode for saving fiddles. You can obtain this from the jpfiddle administrator.'
-  let defaultString = ''
-  if (passcodeFromLocalStorage) {
-    // replace with stars
-    defaultString = passcodeFromLocalStorage.replace(/./g, '*')
-  }
-  let passcode = window.prompt(msg, defaultString)
-  if (passcode === defaultString) {
-    passcode = passcodeFromLocalStorage
-  }
-  if (!passcode) return null
-  localStorage.setItem('jpfiddle-save-fiddle-passcode', passcode)
-  return passcode
-}
 
 export default HomePage;
