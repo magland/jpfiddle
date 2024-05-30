@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { FunctionComponent } from "react";
-import { Fiddle } from './types';
+import { Fiddle } from "./JpfiddleContext/JpfiddleContext";
 
 
 type TopBarProps = {

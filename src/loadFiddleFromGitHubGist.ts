@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest"
-import { Fiddle } from "./types"
+import { Fiddle } from "./JpfiddleContext/JpfiddleContext"
 
 const loadFiddleFromGitHubGist = async (gistUri: string): Promise<Fiddle> => {
     const parts = gistUri.split('/')

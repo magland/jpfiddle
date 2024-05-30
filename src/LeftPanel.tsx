@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Hyperlink } from "@fi-sci/misc";
 import { FunctionComponent, useCallback, useEffect, useMemo, useState } from "react";
-import { Fiddle } from './types';
 import JupyterlabSelector, { jupyterSelectorInstructionsUrl } from "./JupyterlabSelector";
 import { initialJupyterlabSelection } from "./jupyterlabSelection";
+import { Fiddle } from "./JpfiddleContext/JpfiddleContext";
 
 type LeftPanelProps = {
     width: number
