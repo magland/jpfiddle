@@ -19,6 +19,7 @@ This software is build with [React](https://react.dev/), [TypeScript](https://ww
 ## Example fiddles
 
 * [plotly_example](https://jpfiddle.vercel.app/?f=https://gist.github.com/magland/420b6e8274281e360a7f2f87e265ae2e&t=plotly_example%20v3)
+* [autocorrelograms for DANDI NWB](https://jpfiddle.vercel.app/?f=https://tempory.net/f/jpfiddle/anon/f/v4N8QQ.jpf&t=example_autocorrelograms%20v4)
 
 ## Contributing
 

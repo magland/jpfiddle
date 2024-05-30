@@ -18,8 +18,15 @@ const loadFiddleFromGitHubGist = async (gistUri: string): Promise<Fiddle> => {
     for (const fname in files) {
         const file = files[fname]
         if (!file) continue
-        const content = file.content
+        let content = file.content
         if (content === undefined) continue
+        // gists do not support empty files or whitespace-only files
+        if (content.startsWith('<<empty>>')) {
+            const x = content.slice('<<empty>>'.length)
+            if (x.trim() === '') {
+                content = x
+            }
+        }
         const fname2 = replaceBarsWithSlashes(fname)
         refs[fname2] = content
     }
