@@ -203,7 +203,7 @@ const HomePage: FunctionComponent<Props> = () => {
           type: 'set-fiddle-id',
           // see https://github.com/jupyterlite/jupyterlite/issues/1399
           // for now, we need to avoid subfolders for firefox, sadly
-          fiddleId: initialJupyterlabSelection.type === 'local' ? '' : fiddleId
+          fiddleId: initialJupyterlabSelection.type === 'jupyterlite' ? '' : fiddleId
         }, '*')
         iframeElmt.contentWindow?.postMessage({
           type: 'get-files'
