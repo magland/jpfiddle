@@ -201,7 +201,9 @@ const HomePage: FunctionComponent<Props> = () => {
         setJpfiddleExtensionReady(c => c + 1)
         iframeElmt.contentWindow?.postMessage({
           type: 'set-fiddle-id',
-          fiddleId
+          // see https://github.com/jupyterlite/jupyterlite/issues/1399
+          // for now, we need to avoid subfolders for firefox, sadly
+          fiddleId: initialJupyterlabSelection.type === 'local' ? '' : fiddleId
         }, '*')
         iframeElmt.contentWindow?.postMessage({
           type: 'get-files'
