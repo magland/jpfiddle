@@ -207,6 +207,11 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                     Only text files are saved in the fiddle (e.g., files with extension .ipynb, .py, .md, .txt, etc.).
                 </p>
             </div>
+            <div>
+                <a href="https://github.com/magland/jpfiddle" target="_blank" rel="noreferrer">
+                    Read more about jpfiddle
+                </a>
+            </div>
         </div>
     )
 
