@@ -8,7 +8,7 @@ Users can choose between a lightweight, browser-only version (JupyterLite) or a 
 
 This software should only be used for collaborative scientific research and educational purposes.
 
-Files stored on the cloud are temporary and subject to deletion. In the future it will be possible to store fiddles to GitHub gists, which are more permanent.
+Files stored on the cloud are temporary and subject to deletion. For more permanent storage, there is an option for storing fiddles to GitHub Gists.
 
 [Visit the live site](https://jpfiddle.vercel.app) - under construction.
 
@@ -18,7 +18,7 @@ This software is build with [React](https://react.dev/), [TypeScript](https://ww
 
 ## Example fiddles
 
-* [plotly_example](https://jpfiddle.vercel.app/?f=https://tempory.net/f/jpfiddle/anon/f/lmJHXo.jpf&t=plotly_example%20v2)
+* [plotly_example](https://jpfiddle.vercel.app/?f=https://gist.github.com/magland/420b6e8274281e360a7f2f87e265ae2e&t=plotly_example%20v3)
 
 ## Contributing
 

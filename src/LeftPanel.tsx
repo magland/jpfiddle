@@ -226,7 +226,7 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                 {localEditedFiles && <div>
                     <Hyperlink
                         onClick={onSaveAsGist}>
-                        Save to GitHub gist
+                        Save to GitHub Gist
                     </Hyperlink>
                 </div>}
                 {

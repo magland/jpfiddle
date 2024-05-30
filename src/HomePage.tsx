@@ -468,20 +468,20 @@ const HomePage: FunctionComponent<Props> = () => {
   const [saveAsGistMessage, setSaveAsGistMessage] = useState<string | undefined>(undefined)
   const handleSaveAsGist = useCallback(async () => {
     if (!localEditedFiles) return
-      setSaveAsGistMessage('Saving to GitHub gist...')
+      setSaveAsGistMessage('Saving to GitHub Gist...')
       let htmlUrl: string | undefined
       try {
           htmlUrl = await saveAsGitHubGist(localEditedFiles, cloudFiddle?.jpfiddle.title || '')
           if (!htmlUrl) {
-              setSaveAsGistMessage('Problem saving to GitHub gist')
+              setSaveAsGistMessage('Problem saving to GitHub Gist')
               return
           }
-          alert(`Saved to GitHub gist: ${htmlUrl}`)
-          setSaveAsGistMessage('Saved to GitHub gist')
+          alert(`Saved to GitHub Gist: ${htmlUrl}`)
+          setSaveAsGistMessage('Saved to GitHub Gist')
       }
       catch (err: any) {
           console.error(err)
-          setSaveAsGistMessage(`Problem saving to GitHub gist: ${err.message}`)
+          setSaveAsGistMessage(`Problem saving to GitHub Gist: ${err.message}`)
           return
       }
       const newFiddleUri = htmlUrl
