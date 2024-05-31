@@ -20,6 +20,7 @@ This software is build with [React](https://react.dev/), [TypeScript](https://ww
 
 * [plotly_example](https://jpfiddle.vercel.app/?f=https://gist.github.com/magland/420b6e8274281e360a7f2f87e265ae2e&t=plotly_example%20v3)
 * [autocorrelograms for DANDI NWB](https://jpfiddle.vercel.app/?f=https://gist.github.com/magland/083cd125749a285c17675bf70403580a&t=jpfiddle%20example%3A%20autocorrelograms%20for%20dandi%20nwb)
+* [lindi demo](https://jpfiddle.vercel.app/?f=https://gist.github.com/magland/2311e3b58f6a23a71d40bb5aeee6b1bd&t=lindi%20demo)
 
 ## Contributing
 
