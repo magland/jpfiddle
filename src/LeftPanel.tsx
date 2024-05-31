@@ -190,13 +190,21 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                 <div>
                     <p>
                         You are using <b>JupyterLite</b> which is a lightweight version of JupyterLab
-                        that runs entirely in the browser. It is not as featureful as JupyterLab
+                        that runs entirely in the browser. For now we have <b>disabled the Pyodide kernel</b> for
+                        this mode since we are encountering some problems. But you can still browse
+                        and edit the notebooks and other files. If you would like to execute the cells,
+                        then you should use the "Local JupyterLab" option.
+                        &nbsp;<a href={jupyterSelectorInstructionsUrl} target="_blank" rel="noreferrer">
+                            Read more
+                        </a>.
+                        {/* If we reenable the Pyodide kernel, then uncomment the following:
+                        It is not as featureful as JupyterLab
                         and can be slow, but it is convenient for browsing a fiddle without
                         needing to host a Jupyter server. If you plan to do more than just
                         browsing, you should consider using the "Local JupyterLab" option.
                         &nbsp;<a href={jupyterSelectorInstructionsUrl} target="_blank" rel="noreferrer">
                             Read more
-                        </a>.
+                        </a>. */}
                     </p>
                 </div>
             )}

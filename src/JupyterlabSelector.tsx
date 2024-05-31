@@ -24,7 +24,8 @@ const JupyterlabSelector: FunctionComponent<JupyterlabSelectorProps> = () => {
                     setSelection({type: 'jupyterlite'})
                     setChanged(true)
                 }}/>
-                <label htmlFor="jupyterlite">JupyterLite</label>
+                {/* We have disabled the flaky kernel for now */}
+                <label htmlFor="jupyterlite">JupyterLite (no kernel)</label>
             </div>
             <div>
                 <input type="radio" id="local" name="jupyterlab" value="local" checked={selection.type === 'local'} onChange={() => {
@@ -54,9 +55,11 @@ const JupyterlabSelector: FunctionComponent<JupyterlabSelectorProps> = () => {
             {changed && <div style={{color: 'red'}}>
                 Reload the page to apply the changes
             </div>}
-            {isChrome && selection.type === 'local' && <div style={{color: 'red'}}>
+
+            {/* The following should be displayed if we haven't actually disabled the flaky kernel. See https://github.com/jupyterlite/jupyterlite/issues/1399 */}
+            {/* {isChrome && selection.type === 'local' && <div style={{color: 'red'}}>
                 Authentication to a local JupyterLab may not work in Chrome. Try Firefox or Safari.
-            </div>}
+            </div>} */}
         </div>
     )
 }
