@@ -1,7 +1,7 @@
 import {Octokit} from '@octokit/core';
 
 const saveAsGitHubGist = async (files: {[key: string]: string}, defaultDescription: string) => {
-    const token = prompt("SAVING AS PUBLIC GIST: Enter your GitHub personal access token (this will not be stored):");
+    const token = prompt("SAVING AS PUBLIC GIST: Enter your GitHub personal access token (this is not stored). The token must permit creating gists.");
     if (!token) {
         return;
     }
@@ -36,7 +36,7 @@ const saveAsGitHubGist = async (files: {[key: string]: string}, defaultDescripti
 }
 
 export const updateGitHubGist = async (gistUri: string, patch: {[path: string]: string | null}) => {
-    const token = prompt("UPDATING GIST: Enter your GitHub personal access token (this will not be stored):");
+    const token = prompt("UPDATING GIST: Enter your GitHub personal access token (this is not stored). The token must permit creating gists.");
     if (!token) {
         return;
     }
