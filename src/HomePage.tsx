@@ -118,6 +118,7 @@ const HomePage: FunctionComponent<Props> = () => {
   const useLocalStorageForLocalFiles = initialJupyterlabSelection.type === 'jupyterlite'
   return (
     <SetupJpfiddle
+      key={route.fiddleUri || ''} // force complete re-render when fiddleUri changes
       fiddleUri={fiddleUri || ''}
       apiBaseUrl=""
       useLocalStorageForLocalFiles={useLocalStorageForLocalFiles}
@@ -292,6 +293,7 @@ const HomePageChild: FunctionComponent = () => {
           loadFilesStatus={'loaded'}
           jupyterSelectionType={initialJupyterlabSelection.type}
           showNotesAboutJpfiddle={true}
+          showJupyterSelector={true}
         />
       </div>
       <div className="jupyter-window" style={{ position: 'absolute', left: leftPanelWidth, top: topBarHeight, width: width - leftPanelWidth, height: height - topBarHeight, overflow: 'hidden' }}>

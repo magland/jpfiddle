@@ -3,6 +3,7 @@ import { Hyperlink } from "@fi-sci/misc";
 import { FunctionComponent, useCallback, useEffect, useMemo, useState } from "react";
 import { Fiddle } from "./JpfiddleContext/JpfiddleContext";
 import JupyterlabSelector, { jupyterSelectorInstructionsUrl } from "./JupyterlabSelector";
+import useRoute from "./useRoute";
 
 type LeftPanelProps = {
     width: number
@@ -21,9 +22,11 @@ type LeftPanelProps = {
     jupyterSelectionType?: string
     showNotesAboutJpfiddle?: boolean
     showJupyterSelector?: boolean
+    examples?: {title: string, uri: string}[]
 }
 
-const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onSaveAsGist, onUpdateGist, saveAsGistMessage, onResetToCloudVersion, loadFilesStatus, alternateFiddleWord, jupyterSelectionType, showNotesAboutJpfiddle, showJupyterSelector }) => {
+const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onSaveAsGist, onUpdateGist, saveAsGistMessage, onResetToCloudVersion, loadFilesStatus, alternateFiddleWord, jupyterSelectionType, showNotesAboutJpfiddle, showJupyterSelector, examples }) => {
+    const {route, setRoute} = useRoute()
     const addedFilePaths: string[] = useMemo(() => {
         if (!localEditedFiles) return []
         if (!cloudFiddle) return []
@@ -196,7 +199,7 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                         that runs entirely in the browser. For now we have <b>disabled the Pyodide kernel</b> for
                         this mode since we are encountering some problems. But you can still browse
                         and edit the notebooks and other files. If you would like to execute the cells,
-                        then you should use the "Local JupyterLab" option.
+                        then you should use the &quote;Local JupyterLab&quote; option.
                         &nbsp;<a href={jupyterSelectorInstructionsUrl} target="_blank" rel="noreferrer">
                             Read more
                         </a>.
@@ -243,12 +246,12 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
         <div>
             <details open>
                 <summary style={{ fontWeight: 'bold', cursor: 'pointer' }}>
-                    Advanced
+                    GitHub
                 </summary>
                 {localEditedFiles && <div>
                     <Hyperlink
                         onClick={onSaveAsGist}>
-                        {fiddleUri.startsWith('https://gist.github.com') ? 'Save as new GitHub Gist' : 'Save as GitHub Gist'}
+                        {fiddleUri.startsWith('https://gist.github.com') ? 'Save as new GitHub Gist' : 'Save as Gist'}
                     </Hyperlink>
                 </div>}
                 {localEditedFiles && fiddleUri.startsWith('https://gist.github.com') && (
@@ -256,7 +259,7 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                         <Hyperlink
                             onClick={onUpdateGist}
                         >
-                            Update GitHub Gist
+                            Update Gist
                         </Hyperlink>
                     </div>
                 )}
@@ -270,6 +273,33 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
             </details>
         </div>
     )
+
+    const examplesSection = (examples || []).length > 0 && (
+        <div>
+            <details open>
+                <summary style={{ fontWeight: 'bold', cursor: 'pointer' }}>
+                    Examples
+                </summary>
+                {
+                    examples?.map((ex, ii) => (
+                        <div key={ii}>
+                            <Hyperlink onClick={() => {
+                                setRoute({
+                                    ...route,
+                                    page: 'home',
+                                    fiddleUri: ex.uri,
+                                    title: ex.title
+                                })
+                            }}>
+                                {ex.title}
+                            </Hyperlink>
+                        </div>
+                    ))
+                }
+            </details>
+        </div>
+    )
+
 
     {/* <div>
         <h3>Log in using GitHub in order to use jpfiddle</h3>
@@ -303,6 +333,10 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
             {temporyWarningSection && <hr />}
 
             {advancedSection}
+            {advancedSection && <hr />}
+
+            {examplesSection}
+            {examplesSection && <hr />}
 
         </div>
     )

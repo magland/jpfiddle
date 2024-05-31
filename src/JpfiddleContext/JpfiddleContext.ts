@@ -41,7 +41,7 @@ export type LocalFiles = { [key: string]: string } | undefined | null
 
 export type LocalFilesAction = {
     type: 'set-files'
-    files: { path: string, content: string }[] | null
+    files: { path: string, content: string }[] | null | undefined
 } | {
     type: 'file-changed'
     path: string
@@ -58,6 +58,7 @@ export type LocalFilesAction = {
 export const localFilesReducer = (state: LocalFiles, action: LocalFilesAction) => {
     if (action.type === 'set-files') {
         if (action.files === null) return null
+        if (action.files === undefined) return undefined
         const r: { [key: string]: string } = {}
         for (const f of action.files) {
             r[f.path] = f.content
@@ -96,7 +97,7 @@ export type JpfiddleContextType = {
     saveToCloud: () => void
     saveAsGist: () => void
     updateGist: () => void
-    resetFromCloud: () => void
+    resetFromCloud: () => Promise<{path: string, content: string | null}[]>
     saveAsGistMessage?: string
 }
 
@@ -112,7 +113,7 @@ const defaultJpfiddleContext: JpfiddleContextType = {
     saveToCloud: () => { },
     saveAsGist: () => { },
     updateGist: () => { },
-    resetFromCloud: () => { },
+    resetFromCloud: async () => { return [] },
     saveAsGistMessage: undefined
 }
 

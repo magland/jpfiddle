@@ -23,6 +23,7 @@ const SetupJpfiddle: FunctionComponent<PropsWithChildren<SetupJpfiddleProps>> = 
         return () => { canceled = true }
     }, [fiddleUri])
     const [localFiles, localFilesDispatch] = useReducer(localFilesReducer, undefined)
+
     const setLocalFiles = useCallback((files: LocalFiles) => {
         if (files === null) {
             // this is the signal that we need to use the cloud fiddle to set the files
@@ -237,15 +238,15 @@ const SetupJpfiddle: FunctionComponent<PropsWithChildren<SetupJpfiddleProps>> = 
         setSaveAsGistMessage(`Updated Gist with ${numChanges} changes`)
     }, [fiddleUri, cloudFiddle, localFiles])
 
-    const resetFromCloud = useMemo(() => (async () => {
-        if (!cloudFiddle) return
+    const resetFromCloud = useMemo(() => (async (): Promise<{path: string, content: string | null}[]> => {
+        if (!cloudFiddle) return []
         const okay = window.confirm('Are you sure you want to discard local changes and reset to the cloud version?')
-        if (!okay) return
+        if (!okay) return []
         const cloudFiddleClient = new ReferenceFileSystemClient({
             version: 0,
             refs: cloudFiddle.refs
         })
-        const newFiles = []
+        const newFiles: {path: string, content: string | null}[] = []
         for (const fname in cloudFiddle.refs) {
             const buf = await cloudFiddleClient.readBinary(fname, {})
             const content = new TextDecoder().decode(buf)
