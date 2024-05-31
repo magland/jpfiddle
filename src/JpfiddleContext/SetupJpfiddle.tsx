@@ -132,6 +132,7 @@ const SetupJpfiddle: FunctionComponent<PropsWithChildren<SetupJpfiddleProps>> = 
 
     const saveToCloud = useCallback(async () => {
         if (!localFiles) return
+        if (!checkSizesOfFiles(localFiles)) return
         const existingTitle = cloudFiddle?.jpfiddle?.title
         const title = window.prompt('Enter a title for this fiddle', formSuggestedNewTitle(existingTitle || ''))
         if (!title) return
@@ -169,7 +170,7 @@ const SetupJpfiddle: FunctionComponent<PropsWithChildren<SetupJpfiddleProps>> = 
         // localforage.removeItem(`local-fiddle|${fiddleUri}`)
         const newFiddleUri = resp.fiddleUri
         window.location.href = `/?f=${newFiddleUri}`
-    }, [localFiles, cloudFiddle, fiddleUri])
+    }, [localFiles, cloudFiddle, fiddleUri, apiBaseUrl])
 
     const [saveAsGistMessage, setSaveAsGistMessage] = useState<string | undefined>(undefined)
     const saveAsGist = useCallback(async () => {
@@ -368,6 +369,23 @@ const getSaveFiddlePasscode = (): string | null => {
     if (!passcode) return null
     localStorage.setItem('jpfiddle-save-fiddle-passcode', passcode)
     return passcode
+}
+
+const checkSizesOfFiles = (files: LocalFiles): boolean => {
+    let totalSize = 0
+    for (const path in files) {
+        const size0 = files[path].length
+        if (size0 > 1000 * 1000) {
+            alert(`File ${path} is too large (${size0} bytes). Maximum size is 1MB.`)
+            return false
+        }
+        totalSize += size0
+    }
+    if (totalSize > 5 * 1000 * 1000) {
+        alert(`Total size of files is too large (${totalSize} bytes). Maximum size is 5MB.`)
+        return false
+    }
+    return true
 }
 
 

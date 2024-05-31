@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Hyperlink } from "@fi-sci/misc";
 import { FunctionComponent, useCallback, useEffect, useMemo, useState } from "react";
-import JupyterlabSelector, { jupyterSelectorInstructionsUrl } from "./JupyterlabSelector";
-import { initialJupyterlabSelection } from "./jupyterlabSelection";
 import { Fiddle } from "./JpfiddleContext/JpfiddleContext";
+import JupyterlabSelector, { jupyterSelectorInstructionsUrl } from "./JupyterlabSelector";
 
 type LeftPanelProps = {
     width: number
@@ -18,9 +17,13 @@ type LeftPanelProps = {
     saveAsGistMessage?: string
     onResetToCloudVersion: () => void
     loadFilesStatus: 'loading' | 'loaded' | 'error'
+    alternateFiddleWord?: string
+    jupyterSelectionType?: string
+    showNotesAboutJpfiddle?: boolean
+    showJupyterSelector?: boolean
 }
 
-const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onSaveAsGist, onUpdateGist, saveAsGistMessage, onResetToCloudVersion, loadFilesStatus }) => {
+const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri, fiddleId, cloudFiddle, localEditedFiles, onSaveChangesToCloud, onSaveAsGist, onUpdateGist, saveAsGistMessage, onResetToCloudVersion, loadFilesStatus, alternateFiddleWord, jupyterSelectionType, showNotesAboutJpfiddle, showJupyterSelector }) => {
     const addedFilePaths: string[] = useMemo(() => {
         if (!localEditedFiles) return []
         if (!cloudFiddle) return []
@@ -128,13 +131,13 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
         </div>
     )
 
-    const jupyterlabSelectorSection = (
+    const jupyterlabSelectorSection = showJupyterSelector && (
         <JupyterlabSelector />
     )
 
     const metaSection = (
         <div style={{ position: 'relative', left: 2, width: width - 22 }}>
-            Fiddle: {cloudFiddle?.jpfiddle.title || ''} ({fiddleId})
+            {capitalize(alternateFiddleWord) || 'Fiddle'}: {cloudFiddle?.jpfiddle.title || ''} ({fiddleId})
             <br />
             Owner: {cloudFiddle?.jpfiddle.userName || ''}
         </div>
@@ -178,7 +181,7 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                 <Hyperlink onClick={() => {
                     window.location.href = `/?f=${cloudFiddle.jpfiddle.previousFiddleUri}`
                 }}>
-                    Previous version of this fiddle
+                    Previous version of this {alternateFiddleWord || 'fiddle'}
                 </Hyperlink>
             </div>
         )
@@ -186,7 +189,7 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
 
     const notesSection = (
         <div>
-            {initialJupyterlabSelection.type === 'jupyterlite' && (
+            {jupyterSelectionType === 'jupyterlite' && (
                 <div>
                     <p>
                         You are using <b>JupyterLite</b> which is a lightweight version of JupyterLab
@@ -208,7 +211,7 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                     </p>
                 </div>
             )}
-            {initialJupyterlabSelection.type === 'local' && (
+            {jupyterSelectionType === 'local' && (
                 <div>
                     <p>
                         You are using a <b>local JupyterLab</b>. This is a full-featured version of JupyterLab
@@ -219,16 +222,20 @@ const LeftPanel: FunctionComponent<LeftPanelProps> = ({ width, height, fiddleUri
                     </p>
                 </div>
             )}
-            <div>
-                <p>
-                    Only text files are saved in the fiddle (e.g., files with extension .ipynb, .py, .md, .txt, etc.).
-                </p>
-            </div>
-            <div>
-                <a href="https://github.com/magland/jpfiddle" target="_blank" rel="noreferrer">
-                    Read more about jpfiddle
-                </a>
-            </div>
+            {showNotesAboutJpfiddle && (
+                <>
+                <div>
+                    <p>
+                        Only text files are saved in the fiddle (e.g., files with extension .ipynb, .py, .md, .txt, etc.).
+                    </p>
+                </div>
+                <div>
+                    <a href="https://github.com/magland/jpfiddle" target="_blank" rel="noreferrer">
+                        Read more about jpfiddle
+                    </a>
+                </div>
+                </>
+            )}
         </div>
     )
 
@@ -365,5 +372,9 @@ export const JSONStringifyDeterministic = (obj: any, space: string | number | un
     return JSON.stringify(obj, allKeys, space);
 };
 
+const capitalize = (s: string | undefined) => {
+    if (!s) return s
+    return s.charAt(0).toUpperCase() + s.slice(1)
+}
 
 export default LeftPanel

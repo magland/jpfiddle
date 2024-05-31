@@ -290,6 +290,8 @@ const HomePageChild: FunctionComponent = () => {
           saveAsGistMessage={saveAsGistMessage}
           onResetToCloudVersion={handleResetToCloudVersion}
           loadFilesStatus={'loaded'}
+          jupyterSelectionType={initialJupyterlabSelection.type}
+          showNotesAboutJpfiddle={true}
         />
       </div>
       <div className="jupyter-window" style={{ position: 'absolute', left: leftPanelWidth, top: topBarHeight, width: width - leftPanelWidth, height: height - topBarHeight, overflow: 'hidden' }}>
