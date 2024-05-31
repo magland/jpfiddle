@@ -6,7 +6,7 @@ type JupyterlabSelectorProps = {
     // none
 }
 
-const isChrome = navigator.userAgent.indexOf('Chrome') > -1
+// const isChrome = navigator.userAgent.indexOf('Chrome') > -1
 
 export const jupyterSelectorInstructionsUrl = "https://github.com/magland/jpfiddle/blob/main/doc/local_jupyterlab.md"
 
